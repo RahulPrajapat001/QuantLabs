@@ -29,6 +29,10 @@ data = [
     "exchange-calendars>=4.5",
     "requests>=2.31",
     "yfinance>=0.2.37",
+    # Universe construction: HTML changes table (lxml powers pandas.read_html)
+    # and NSE reconstitution PDFs.
+    "lxml>=5.0",
+    "pypdf>=4.0",
 ]
 # --- M2: Research Engine -----------------------------------------------------
 research = [
@@ -109,6 +113,11 @@ disallow_untyped_defs = false
 # abstraction and imported in exactly one module.
 [[tool.mypy.overrides]]
 module = "yfinance.*"
+ignore_missing_imports = true
+
+# pypdf ships no type stubs; it is imported only inside the reconstitution parser.
+[[tool.mypy.overrides]]
+module = "pypdf.*"
 ignore_missing_imports = true
 
 # --- pytest ------------------------------------------------------------------

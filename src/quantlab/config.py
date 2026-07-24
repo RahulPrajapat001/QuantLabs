@@ -47,8 +47,19 @@ class Settings(BaseSettings):
     # Storage
     data_dir: Path = Field(default=Path("data"))
     raw_dir: Path = Field(default=Path("data/raw"))
+    #: Cached primary sources for universe construction — reconstitution PDFs
+    #: (NSE) and changes-table HTML (S&P 500) — so results are reproducible
+    #: without re-downloading (PRD Module 2).
+    reference_dir: Path = Field(default=Path("data/raw/reference"))
     features_dir: Path = Field(default=Path("data/features"))
     database_url: str = Field(default="sqlite:///quantlab.db")
+
+    # Universe / backtest
+    #: Recovery rate applied when a security is delisted for bankruptcy: the
+    #: liquidation receives ``last_price * recovery_rate``. Default 0 — a
+    #: bankruptcy is assumed a total loss unless configured otherwise
+    #: (PRD Module 2, "Delisting in backtest").
+    bankruptcy_recovery_rate: float = Field(default=0.0, ge=0.0, le=1.0)
 
     # Data-provider credentials (blank by default; set locally, never commit)
     alpha_vantage_api_key: str | None = Field(default=None)
