@@ -250,6 +250,98 @@ def universe_as_of_cmd(
         session.close()
 
 
+features_app = typer.Typer(
+    help="Feature engineering: DAG registry build + benchmark (PRD Module 3)."
+)
+app.add_typer(features_app, name="features")
+
+
+@features_app.command("build")
+def features_build(
+    universe: str = typer.Option(
+        ..., "--universe", help="Index whose members to build features for."
+    ),
+    features: str = typer.Option(
+        "all",
+        "--features",
+        help="'all', a category name, or a comma-separated list of feature names.",
+    ),
+    start: str = typer.Option(None, "--start", help="Inclusive start (YYYY-MM-DD)."),
+    end: str = typer.Option(None, "--end", help="Inclusive end (YYYY-MM-DD)."),
+    n_jobs: int = typer.Option(
+        -1, "--jobs", help="Parallel workers for per-security compute (-1 = all cores)."
+    ),
+) -> None:
+    """Build features for a universe and write partitioned parquet to data/features/.
+
+    Example::
+
+        quantlab features build --universe NIFTY500 --features all
+    """
+
+    from quantlab.db.session import create_db_engine, create_session_factory
+    from quantlab.feature_engineering.build import build_and_write
+
+    start_date = _parse_date(start) if start else None
+    end_date = _parse_date(end) if end else None
+
+    engine = create_db_engine()
+    factory = create_session_factory(engine)
+    session = factory()
+    try:
+        rows, root = build_and_write(
+            session,
+            universe,
+            features=features,
+            start=start_date,
+            end=end_date,
+            n_jobs=n_jobs,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    finally:
+        session.close()
+
+    typer.echo(f"Wrote {rows} feature rows to {root} (partitioned by year).")
+
+
+@features_app.command("benchmark")
+def features_benchmark(
+    securities: int = typer.Option(
+        500, "--securities", help="Synthetic securities to benchmark."
+    ),
+    days: int = typer.Option(
+        2520, "--days", help="Trading days per security (2520 ~= 10 years)."
+    ),
+    write_doc: bool = typer.Option(
+        True, "--write-doc/--no-write-doc", help="Write docs/performance.md."
+    ),
+) -> None:
+    """Benchmark a full feature build, profile it, and write docs/performance.md."""
+
+    from quantlab.feature_engineering.benchmark import (
+        profile_build,
+        run_benchmark,
+        write_performance_doc,
+    )
+
+    typer.echo(f"Benchmarking {securities} securities x {days} days...")
+    result = run_benchmark(n_securities=securities, n_days=days)
+    typer.echo(
+        f"  caching speed-up:       {result.caching_speedup:.1f}x "
+        f"({result.naive_seconds:.2f}s -> {result.cached_seconds:.2f}s)"
+    )
+    typer.echo(f"  vectorisation speed-up: {result.vectorisation_speedup:.1f}x")
+    typer.echo(
+        f"  parallel speed-up:      {result.parallel_speedup:.1f}x "
+        f"({result.serial_seconds:.2f}s -> {result.parallel_seconds:.2f}s)"
+    )
+    if write_doc:
+        profile_text = profile_build()
+        path = write_performance_doc(result, profile_text)
+        typer.echo(f"Wrote {path}")
+
+
 def main() -> None:
     """Console-script entry point (see ``[project.scripts]`` in pyproject.toml)."""
     app()

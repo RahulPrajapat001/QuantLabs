@@ -33,6 +33,8 @@ data = [
     # and NSE reconstitution PDFs.
     "lxml>=5.0",
     "pypdf>=4.0",
+    # Feature engineering: per-security parallelism for the DAG build.
+    "joblib>=1.3",
 ]
 # --- M2: Research Engine -----------------------------------------------------
 research = [
@@ -118,6 +120,11 @@ ignore_missing_imports = true
 # pypdf ships no type stubs; it is imported only inside the reconstitution parser.
 [[tool.mypy.overrides]]
 module = "pypdf.*"
+ignore_missing_imports = true
+
+# joblib and pyarrow ship no type stubs; both are confined to the feature build.
+[[tool.mypy.overrides]]
+module = ["joblib.*", "pyarrow.*"]
 ignore_missing_imports = true
 
 # --- pytest ------------------------------------------------------------------
