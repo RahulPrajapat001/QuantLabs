@@ -44,6 +44,7 @@ def test_resolve_feature_names_category() -> None:
         "momentum_50d",
         "momentum_100d",
         "momentum_200d",
+        "momentum_12_1",
     }
 
 

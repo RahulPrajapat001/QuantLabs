@@ -61,6 +61,14 @@ class Settings(BaseSettings):
     #: (PRD Module 2, "Delisting in backtest").
     bankruptcy_recovery_rate: float = Field(default=0.0, ge=0.0, le=1.0)
 
+    # Alpha research (PRD Module 6)
+    #: A factor must clear this absolute mean information coefficient AND the
+    #: t-stat gate below before it is eligible for the strategy builder. Enforced
+    #: in code (see ``quantlab.factors.gate``), not documentation.
+    factor_min_abs_ic: float = Field(default=0.02, ge=0.0)
+    #: Minimum absolute Newey-West t-statistic on the mean IC for eligibility.
+    factor_min_ic_tstat: float = Field(default=2.0, ge=0.0)
+
     # Data-provider credentials (blank by default; set locally, never commit)
     alpha_vantage_api_key: str | None = Field(default=None)
     polygon_api_key: str | None = Field(default=None)

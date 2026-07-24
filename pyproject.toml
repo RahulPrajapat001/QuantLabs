@@ -127,6 +127,12 @@ ignore_missing_imports = true
 module = ["joblib.*", "pyarrow.*"]
 ignore_missing_imports = true
 
+# statsmodels ships no py.typed marker; it is wrapped by the stats and factors
+# modules (PRD Modules 5 and 6).
+[[tool.mypy.overrides]]
+module = ["statsmodels.*"]
+ignore_missing_imports = true
+
 # --- pytest ------------------------------------------------------------------
 [tool.pytest.ini_options]
 minversion = "8.0"
