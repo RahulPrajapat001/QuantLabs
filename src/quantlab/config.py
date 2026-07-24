@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     features_dir: Path = Field(default=Path("data/features"))
     database_url: str = Field(default="sqlite:///quantlab.db")
 
+    # Data-provider credentials (blank by default; set locally, never commit)
+    alpha_vantage_api_key: str | None = Field(default=None)
+    polygon_api_key: str | None = Field(default=None)
+
     # Research-integrity flags
     #: Deliberately absent from ``.env.example``. Must be explicitly set to unlock
     #: holdout data, and even then only in combination with ``holdout=True``.
