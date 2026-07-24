@@ -1,0 +1,10 @@
+# Normalize line endings: text files are LF in the repo, checked out natively.
+* text=auto eol=lf
+
+# Binary artefacts — never munge.
+*.parquet binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+*.png binary
+*.pdf binary
