@@ -29,6 +29,10 @@ for _w in VOL_WINDOWS:
         dependencies=["log_return_1d"],
         lookback=_w,
         category="volatility",
+        description=(
+            f"Standard deviation of daily log returns over {_w} sessions. "
+            "Not annualised — the scale is per-session."
+        ),
     )
 
 
@@ -37,6 +41,10 @@ for _w in VOL_WINDOWS:
     dependencies=["high", "low", "close"],
     lookback=14,
     category="volatility",
+    description=(
+        "Average True Range over 14 sessions: mean daily range including overnight "
+        "gaps."
+    ),
 )
 def atr_14(df: pd.DataFrame) -> pd.Series[float]:
     return atr(df, 14)
@@ -47,6 +55,10 @@ def atr_14(df: pd.DataFrame) -> pd.Series[float]:
     dependencies=["high", "low"],
     lookback=20,
     category="volatility",
+    description=(
+        "Parkinson high-low range volatility over 20 sessions — more efficient "
+        "than close-to-close, but blind to overnight moves."
+    ),
 )
 def parkinson_20(df: pd.DataFrame) -> pd.Series[float]:
     # Parkinson high-low range volatility estimator.
@@ -60,6 +72,9 @@ def parkinson_20(df: pd.DataFrame) -> pd.Series[float]:
     dependencies=["close"],
     lookback=20,
     category="volatility",
+    description=(
+        "Bollinger band width (k=2) as a fraction of the mean: normalised volatility."
+    ),
 )
 def bollinger_width_20(df: pd.DataFrame) -> pd.Series[float]:
     # (upper - lower) / mid with k=2 == 4*std/mean; a normalised band width.

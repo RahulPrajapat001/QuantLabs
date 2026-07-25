@@ -161,6 +161,17 @@
           "total_return": {
             "$ref": "#/components/schemas/Num"
           },
+          "trade_log": {
+            "items": {
+              "$ref": "#/components/schemas/TradeOut"
+            },
+            "title": "Trade Log",
+            "type": "array"
+          },
+          "trade_log_truncated": {
+            "title": "Trade Log Truncated",
+            "type": "boolean"
+          },
           "trades": {
             "$ref": "#/components/schemas/Num"
           },
@@ -203,7 +214,9 @@
           "initial_capital",
           "final_equity",
           "trading_days",
-          "equity_curve"
+          "equity_curve",
+          "trade_log",
+          "trade_log_truncated"
         ],
         "title": "BacktestResult",
         "type": "object"
@@ -296,6 +309,308 @@
           "bars"
         ],
         "title": "BarSeries",
+        "type": "object"
+      },
+      "BetaOut": {
+        "properties": {
+          "interpretation": {
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "lookback": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "max_beta": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "mean_beta": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "min_beta": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/BetaPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "window": {
+            "$ref": "#/components/schemas/DateRange"
+          }
+        },
+        "required": [
+          "window",
+          "lookback",
+          "points",
+          "mean_beta",
+          "min_beta",
+          "max_beta",
+          "interpretation"
+        ],
+        "title": "BetaOut",
+        "type": "object"
+      },
+      "BetaPoint": {
+        "properties": {
+          "alpha": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "beta": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "date_display": {
+            "title": "Date Display",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "date_display",
+          "beta",
+          "alpha"
+        ],
+        "title": "BetaPoint",
+        "type": "object"
+      },
+      "BetaRequest": {
+        "properties": {
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "index_name": {
+            "default": "NIFTY500",
+            "title": "Index Name",
+            "type": "string"
+          },
+          "lookback": {
+            "default": 756,
+            "maximum": 5000.0,
+            "minimum": 60.0,
+            "title": "Lookback",
+            "type": "integer"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weights"
+          },
+          "window": {
+            "default": 60,
+            "maximum": 1000.0,
+            "minimum": 20.0,
+            "title": "Window",
+            "type": "integer"
+          }
+        },
+        "title": "BetaRequest",
+        "type": "object"
+      },
+      "CompletenessCell": {
+        "description": "One security-month: bars present against NSE sessions expected.",
+        "properties": {
+          "bars": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "completeness": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "expected": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "security_id": {
+            "title": "Security Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "security_id",
+          "month",
+          "bars",
+          "expected",
+          "completeness"
+        ],
+        "title": "CompletenessCell",
+        "type": "object"
+      },
+      "CompletenessGrid": {
+        "properties": {
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/CompletenessCell"
+            },
+            "title": "Cells",
+            "type": "array"
+          },
+          "months": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "overall": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "securities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Securities",
+            "type": "array"
+          },
+          "truncated": {
+            "description": "True when more securities exist than the requested limit.",
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "securities",
+          "months",
+          "cells",
+          "overall",
+          "truncated"
+        ],
+        "title": "CompletenessGrid",
+        "type": "object"
+      },
+      "CorrelationOut": {
+        "properties": {
+          "matrix": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Matrix",
+            "type": "array"
+          },
+          "max_correlation": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "mean_correlation": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "n_observations": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "securities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Securities",
+            "type": "array"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "window": {
+            "$ref": "#/components/schemas/DateRange"
+          }
+        },
+        "required": [
+          "window",
+          "securities",
+          "matrix",
+          "mean_correlation",
+          "max_correlation",
+          "n_observations",
+          "truncated"
+        ],
+        "title": "CorrelationOut",
+        "type": "object"
+      },
+      "CorrelationRequest": {
+        "properties": {
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "index_name": {
+            "default": "NIFTY500",
+            "title": "Index Name",
+            "type": "string"
+          },
+          "limit": {
+            "default": 40,
+            "description": "Securities in the matrix. A 500\u00d7500 heatmap is not readable.",
+            "maximum": 120.0,
+            "minimum": 2.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "lookback": {
+            "default": 252,
+            "maximum": 5000.0,
+            "minimum": 30.0,
+            "title": "Lookback",
+            "type": "integer"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          }
+        },
+        "title": "CorrelationRequest",
         "type": "object"
       },
       "CostModelStatus": {
@@ -732,6 +1047,100 @@
           "direction"
         ],
         "title": "FactorSummary",
+        "type": "object"
+      },
+      "FanBand": {
+        "properties": {
+          "percentile": {
+            "title": "Percentile",
+            "type": "integer"
+          },
+          "values": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "percentile",
+          "values"
+        ],
+        "title": "FanBand",
+        "type": "object"
+      },
+      "FeatureCatalog": {
+        "properties": {
+          "categories": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Feature count per category, over the whole registry.",
+            "title": "Categories",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "returned": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "total": {
+            "$ref": "#/components/schemas/Num"
+          }
+        },
+        "required": [
+          "total",
+          "returned",
+          "categories",
+          "items"
+        ],
+        "title": "FeatureCatalog",
+        "type": "object"
+      },
+      "FeatureOut": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "dependencies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dependencies",
+            "type": "array"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "lookback": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "category",
+          "description",
+          "lookback",
+          "dependencies",
+          "kind"
+        ],
+        "title": "FeatureOut",
         "type": "object"
       },
       "FeaturePanel": {
@@ -1324,6 +1733,144 @@
           "security_ids"
         ],
         "title": "MembershipOut",
+        "type": "object"
+      },
+      "MonteCarloOut": {
+        "properties": {
+          "bands": {
+            "items": {
+              "$ref": "#/components/schemas/FanBand"
+            },
+            "title": "Bands",
+            "type": "array"
+          },
+          "block_size": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "horizon_days": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "interpretation": {
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "max_drawdown_p95": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "n_simulations": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "source_observations": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "terminal_p05": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "terminal_p50": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "terminal_p95": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "window": {
+            "$ref": "#/components/schemas/DateRange"
+          }
+        },
+        "required": [
+          "window",
+          "n_simulations",
+          "horizon_days",
+          "method",
+          "block_size",
+          "source_observations",
+          "bands",
+          "terminal_p05",
+          "terminal_p50",
+          "terminal_p95",
+          "max_drawdown_p95",
+          "interpretation"
+        ],
+        "title": "MonteCarloOut",
+        "type": "object"
+      },
+      "MonteCarloRequest": {
+        "properties": {
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "horizon_days": {
+            "default": 252,
+            "maximum": 2520.0,
+            "minimum": 5.0,
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "index_name": {
+            "default": "NIFTY500",
+            "title": "Index Name",
+            "type": "string"
+          },
+          "lookback": {
+            "default": 504,
+            "maximum": 5000.0,
+            "minimum": 30.0,
+            "title": "Lookback",
+            "type": "integer"
+          },
+          "method": {
+            "default": "block",
+            "description": "block | iid",
+            "title": "Method",
+            "type": "string"
+          },
+          "n_simulations": {
+            "default": 5000,
+            "maximum": 50000.0,
+            "minimum": 100.0,
+            "title": "N Simulations",
+            "type": "integer"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weights"
+          }
+        },
+        "title": "MonteCarloRequest",
         "type": "object"
       },
       "Num": {
@@ -2360,6 +2907,82 @@
         "title": "TickerPeriod",
         "type": "object"
       },
+      "TradeOut": {
+        "description": "One closed round trip.",
+        "properties": {
+          "costs": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "entry_date": {
+            "format": "date",
+            "title": "Entry Date",
+            "type": "string"
+          },
+          "entry_display": {
+            "title": "Entry Display",
+            "type": "string"
+          },
+          "entry_price": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "exit_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Date"
+          },
+          "exit_display": {
+            "title": "Exit Display",
+            "type": "string"
+          },
+          "exit_price": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "holding_days": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "is_win": {
+            "title": "Is Win",
+            "type": "boolean"
+          },
+          "pnl": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "quantity": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "return_pct": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "security_id": {
+            "title": "Security Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "security_id",
+          "entry_date",
+          "entry_display",
+          "exit_date",
+          "exit_display",
+          "holding_days",
+          "quantity",
+          "entry_price",
+          "exit_price",
+          "costs",
+          "pnl",
+          "return_pct",
+          "is_win"
+        ],
+        "title": "TradeOut",
+        "type": "object"
+      },
       "VaREntry": {
         "properties": {
           "confidence": {
@@ -2766,6 +3389,127 @@
         ]
       }
     },
+    "/features": {
+      "get": {
+        "operationId": "catalog_features_get",
+        "parameters": [
+          {
+            "description": "Case-insensitive match on name or description.",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Case-insensitive match on name or description.",
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 2000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureCatalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "The registered features.",
+        "tags": [
+          "features"
+        ]
+      }
+    },
+    "/features/{name}": {
+      "get": {
+        "operationId": "feature_features__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One feature's registry entry.",
+        "tags": [
+          "features"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "health_health_get",
@@ -3064,6 +3808,88 @@
         "summary": "Optimise weights.",
         "tags": [
           "portfolio"
+        ]
+      }
+    },
+    "/quality/completeness": {
+      "get": {
+        "description": "Expected sessions come from the observed trading calendar, not a count of\nweekdays: the union of dates on which *any* security traded is the exchange\ncalendar as this database knows it, so holidays never read as missing data.",
+        "operationId": "completeness_quality_completeness_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "description": "Securities per grid. A heatmap of 500 rows is not readable.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 40,
+              "description": "Securities per grid. A heatmap of 500 rows is not readable.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompletenessGrid"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bar coverage per security per month.",
+        "tags": [
+          "quality"
         ]
       }
     },
@@ -3497,6 +4323,131 @@
         "summary": "One run by id.",
         "tags": [
           "research"
+        ]
+      }
+    },
+    "/risk/beta": {
+      "post": {
+        "description": "The benchmark is the equal-weighted index over the same window.\n\nA rolling beta is reported rather than a single number because a full-sample\nbeta averages over regimes the portfolio was not the same thing in.",
+        "operationId": "beta_risk_beta_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BetaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BetaOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rolling beta and alpha vs the index.",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/risk/correlation": {
+      "post": {
+        "operationId": "correlation_risk_correlation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrelationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorrelationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pairwise return correlation matrix.",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/risk/monte-carlo": {
+      "post": {
+        "description": "A resampling of history, not a forecast.\n\nThe bands describe what the *observed* return distribution would produce over\nthe horizon if it kept behaving as it did in the sample. It contains no\nregime the sample does not contain, which is exactly why the interpretation\nstring says so on every response.",
+        "operationId": "monte_carlo_paths_risk_monte_carlo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonteCarloRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonteCarloOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bootstrap forward paths from the sampled return distribution.",
+        "tags": [
+          "risk"
         ]
       }
     },

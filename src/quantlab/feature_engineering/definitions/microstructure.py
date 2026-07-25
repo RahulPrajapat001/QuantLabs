@@ -20,6 +20,7 @@ from quantlab.feature_engineering.registry import add_feature, register_feature
     dependencies=["volume"],
     lookback=5,
     category="microstructure",
+    description="Volume against its 5-session mean: a burst of participation.",
 )
 def volume_shock_5(df: pd.DataFrame) -> pd.Series[float]:
     return df["volume"] / df["volume"].rolling(5).mean()
@@ -30,6 +31,7 @@ def volume_shock_5(df: pd.DataFrame) -> pd.Series[float]:
     dependencies=["volume"],
     lookback=20,
     category="microstructure",
+    description="Volume against its 20-session mean: a burst of participation.",
 )
 def volume_shock_20(df: pd.DataFrame) -> pd.Series[float]:
     return df["volume"] / df["volume"].rolling(20).mean()
@@ -40,6 +42,7 @@ def volume_shock_20(df: pd.DataFrame) -> pd.Series[float]:
     dependencies=["open", "close"],
     lookback=1,
     category="microstructure",
+    description="Overnight gap: today's open against yesterday's close.",
 )
 def gap_pct(df: pd.DataFrame) -> pd.Series[float]:
     # Overnight gap: today's open vs yesterday's close.
@@ -51,6 +54,7 @@ def gap_pct(df: pd.DataFrame) -> pd.Series[float]:
     dependencies=["close", "volume"],
     lookback=1,
     category="microstructure",
+    description="Close times volume: traded value, and the practical liquidity screen.",
 )
 def dollar_volume(df: pd.DataFrame) -> pd.Series[float]:
     return df["close"] * df["volume"]
@@ -73,6 +77,10 @@ for _step in LAG_STEPS:
         dependencies=["return_1d"],
         lookback=_step + 1,
         category="microstructure",
+        description=(
+            f"The daily return from {_step} session(s) ago — a short-horizon "
+            "reversal input."
+        ),
     )
 
 
@@ -81,6 +89,10 @@ for _step in LAG_STEPS:
     dependencies=["close", "high"],
     lookback=20,
     category="microstructure",
+    description=(
+        "Close relative to the 20-session high; near 1.0 means closing at the top of "
+        "the range."
+    ),
 )
 def close_to_high_20(df: pd.DataFrame) -> pd.Series[float]:
     return df["close"] / df["high"].rolling(20).max()
@@ -91,6 +103,9 @@ def close_to_high_20(df: pd.DataFrame) -> pd.Series[float]:
     dependencies=["close", "low"],
     lookback=20,
     category="microstructure",
+    description=(
+        "Close relative to the 20-session low; near 1.0 means closing at the bottom."
+    ),
 )
 def close_to_low_20(df: pd.DataFrame) -> pd.Series[float]:
     return df["close"] / df["low"].rolling(20).min()
@@ -110,6 +125,9 @@ def _rolling_pct_rank(series: pd.Series[float], window: int) -> pd.Series[float]
     dependencies=["return_1d"],
     lookback=60,
     category="microstructure",
+    description=(
+        "Percentile rank of the 20-session return within its own trailing history."
+    ),
 )
 def rolling_rank_return_20d(df: pd.DataFrame) -> pd.Series[float]:
     return _rolling_pct_rank(df["return_1d"], 60)
@@ -120,6 +138,7 @@ def rolling_rank_return_20d(df: pd.DataFrame) -> pd.Series[float]:
     dependencies=["rsi_14"],
     lookback=74,
     category="microstructure",
+    description="Percentile rank of RSI-14 within its own trailing history.",
 )
 def rolling_rank_rsi_14(df: pd.DataFrame) -> pd.Series[float]:
     return _rolling_pct_rank(df["rsi_14"], 60)

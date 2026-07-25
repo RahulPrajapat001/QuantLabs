@@ -60,6 +60,11 @@ class FeatureSpec:
     lookback: int
     category: str
     kind: FeatureKind = FeatureKind.TIME_SERIES
+    #: One line describing what the feature measures, for the data dictionary
+    #: and the Feature Explorer. Stored rather than read from the function's
+    #: docstring because most features are closures generated in a loop
+    #: (``sma_5 … sma_200``), which have no docstring to read.
+    description: str = ""
 
     def __post_init__(self) -> None:
         if self.lookback < 0:
@@ -181,12 +186,19 @@ class FeatureRegistry:
 REGISTRY = FeatureRegistry()
 
 
+def _first_line(doc: str | None) -> str:
+    """A decorated feature's docstring summary, if it has one."""
+
+    return (doc or "").strip().split("\n")[0].strip()
+
+
 def register_feature(
     *,
     name: str,
     dependencies: Sequence[str],
     lookback: int,
     category: str,
+    description: str = "",
     kind: FeatureKind | str = FeatureKind.TIME_SERIES,
     registry: FeatureRegistry | None = None,
 ) -> Callable[[FeatureFn], FeatureFn]:
@@ -214,6 +226,7 @@ def register_feature(
                 lookback=lookback,
                 category=category,
                 kind=resolved_kind,
+                description=description or _first_line(func.__doc__),
             )
         )
         return func
@@ -228,6 +241,7 @@ def add_feature(
     dependencies: Sequence[str],
     lookback: int,
     category: str,
+    description: str = "",
     kind: FeatureKind | str = FeatureKind.TIME_SERIES,
     registry: FeatureRegistry | None = None,
 ) -> None:
@@ -245,6 +259,7 @@ def add_feature(
             lookback=lookback,
             category=category,
             kind=FeatureKind(kind),
+            description=description,
         )
     )
 

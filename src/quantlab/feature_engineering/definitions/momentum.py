@@ -36,6 +36,7 @@ for _window in MOMENTUM_WINDOWS:
         dependencies=["close"],
         lookback=_window,
         category="momentum",
+        description=f"Price change over the trailing {_window} sessions.",
     )
 
 
@@ -50,4 +51,8 @@ add_feature(
     dependencies=["close"],
     lookback=_TWELVE_MONTHS,
     category="momentum",
+    description=(
+        "Trailing 12-month return skipping the most recent month, which avoids "
+        "the short-term reversal that contaminates a raw 12-month signal."
+    ),
 )

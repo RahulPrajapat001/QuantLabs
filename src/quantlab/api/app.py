@@ -100,6 +100,7 @@ def create_app() -> FastAPI:
     from quantlab.api.routers import (
         backtests,
         factors,
+        features,
         market,
         portfolio,
         quality,
@@ -115,6 +116,7 @@ def create_app() -> FastAPI:
         universe,
         market,
         quality,
+        features,
         factors,
         backtests,
         research,

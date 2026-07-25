@@ -106,6 +106,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The registered features. */
+        get: operations["catalog_features_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/features/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One feature's registry entry. */
+        get: operations["feature_features__name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -185,6 +219,28 @@ export interface paths {
         put?: never;
         /** Optimise weights. */
         post: operations["optimise_portfolio_optimise_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quality/completeness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bar coverage per security per month.
+         * @description Expected sessions come from the observed trading calendar, not a count of
+         *     weekdays: the union of dates on which *any* security traded is the exchange
+         *     calendar as this database knows it, so holidays never read as missing data.
+         */
+        get: operations["completeness_quality_completeness_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -321,6 +377,71 @@ export interface paths {
         get: operations["get_run_research_log__run_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/risk/beta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rolling beta and alpha vs the index.
+         * @description The benchmark is the equal-weighted index over the same window.
+         *
+         *     A rolling beta is reported rather than a single number because a full-sample
+         *     beta averages over regimes the portfolio was not the same thing in.
+         */
+        post: operations["beta_risk_beta_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/risk/correlation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pairwise return correlation matrix. */
+        post: operations["correlation_risk_correlation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/risk/monte-carlo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bootstrap forward paths from the sampled return distribution.
+         * @description A resampling of history, not a forecast.
+         *
+         *     The bands describe what the *observed* return distribution would produce over
+         *     the horizon if it kept behaving as it did in the sample. It contains no
+         *     regime the sample does not contain, which is exactly why the interpretation
+         *     string says so on every response.
+         */
+        post: operations["monte_carlo_paths_risk_monte_carlo_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -559,6 +680,10 @@ export interface components {
             strategy: string;
             total_costs: components["schemas"]["Num"];
             total_return: components["schemas"]["Num"];
+            /** Trade Log */
+            trade_log: components["schemas"]["TradeOut"][];
+            /** Trade Log Truncated */
+            trade_log_truncated: boolean;
             trades: components["schemas"]["Num"];
             trading_days: components["schemas"]["Num"];
             turnover: components["schemas"]["Num"];
@@ -596,6 +721,120 @@ export interface components {
              */
             truncated: boolean;
             window: components["schemas"]["DateRange"];
+        };
+        /** BetaOut */
+        BetaOut: {
+            /** Interpretation */
+            interpretation: string;
+            lookback: components["schemas"]["Num"];
+            max_beta: components["schemas"]["Num"];
+            mean_beta: components["schemas"]["Num"];
+            min_beta: components["schemas"]["Num"];
+            /** Points */
+            points: components["schemas"]["BetaPoint"][];
+            window: components["schemas"]["DateRange"];
+        };
+        /** BetaPoint */
+        BetaPoint: {
+            alpha: components["schemas"]["Num"];
+            beta: components["schemas"]["Num"];
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Date Display */
+            date_display: string;
+        };
+        /** BetaRequest */
+        BetaRequest: {
+            /** End */
+            end?: string | null;
+            /**
+             * Index Name
+             * @default NIFTY500
+             */
+            index_name: string;
+            /**
+             * Lookback
+             * @default 756
+             */
+            lookback: number;
+            /** Start */
+            start?: string | null;
+            /** Weights */
+            weights?: {
+                [key: string]: number;
+            } | null;
+            /**
+             * Window
+             * @default 60
+             */
+            window: number;
+        };
+        /**
+         * CompletenessCell
+         * @description One security-month: bars present against NSE sessions expected.
+         */
+        CompletenessCell: {
+            bars: components["schemas"]["Num"];
+            completeness: components["schemas"]["Num"];
+            expected: components["schemas"]["Num"];
+            /** Month */
+            month: string;
+            /** Security Id */
+            security_id: string;
+        };
+        /** CompletenessGrid */
+        CompletenessGrid: {
+            /** Cells */
+            cells: components["schemas"]["CompletenessCell"][];
+            /** Months */
+            months: string[];
+            overall: components["schemas"]["Num"];
+            /** Securities */
+            securities: string[];
+            /**
+             * Truncated
+             * @description True when more securities exist than the requested limit.
+             */
+            truncated: boolean;
+        };
+        /** CorrelationOut */
+        CorrelationOut: {
+            /** Matrix */
+            matrix: number[][];
+            max_correlation: components["schemas"]["Num"];
+            mean_correlation: components["schemas"]["Num"];
+            n_observations: components["schemas"]["Num"];
+            /** Securities */
+            securities: string[];
+            /** Truncated */
+            truncated: boolean;
+            window: components["schemas"]["DateRange"];
+        };
+        /** CorrelationRequest */
+        CorrelationRequest: {
+            /** End */
+            end?: string | null;
+            /**
+             * Index Name
+             * @default NIFTY500
+             */
+            index_name: string;
+            /**
+             * Limit
+             * @description Securities in the matrix. A 500×500 heatmap is not readable.
+             * @default 40
+             */
+            limit: number;
+            /**
+             * Lookback
+             * @default 252
+             */
+            lookback: number;
+            /** Start */
+            start?: string | null;
         };
         /**
          * CostModelStatus
@@ -747,6 +986,41 @@ export interface components {
             direction: number;
             /** Feature */
             feature: string;
+            /** Name */
+            name: string;
+        };
+        /** FanBand */
+        FanBand: {
+            /** Percentile */
+            percentile: number;
+            /** Values */
+            values: number[];
+        };
+        /** FeatureCatalog */
+        FeatureCatalog: {
+            /**
+             * Categories
+             * @description Feature count per category, over the whole registry.
+             */
+            categories: {
+                [key: string]: number;
+            };
+            /** Items */
+            items: components["schemas"]["FeatureOut"][];
+            returned: components["schemas"]["Num"];
+            total: components["schemas"]["Num"];
+        };
+        /** FeatureOut */
+        FeatureOut: {
+            /** Category */
+            category: string;
+            /** Dependencies */
+            dependencies: string[];
+            /** Description */
+            description: string;
+            /** Kind */
+            kind: string;
+            lookback: components["schemas"]["Num"];
             /** Name */
             name: string;
         };
@@ -954,6 +1228,61 @@ export interface components {
             index_name: string;
             /** Security Ids */
             security_ids: string[];
+        };
+        /** MonteCarloOut */
+        MonteCarloOut: {
+            /** Bands */
+            bands: components["schemas"]["FanBand"][];
+            block_size: components["schemas"]["Num"];
+            horizon_days: components["schemas"]["Num"];
+            /** Interpretation */
+            interpretation: string;
+            max_drawdown_p95: components["schemas"]["Num"];
+            /** Method */
+            method: string;
+            n_simulations: components["schemas"]["Num"];
+            source_observations: components["schemas"]["Num"];
+            terminal_p05: components["schemas"]["Num"];
+            terminal_p50: components["schemas"]["Num"];
+            terminal_p95: components["schemas"]["Num"];
+            window: components["schemas"]["DateRange"];
+        };
+        /** MonteCarloRequest */
+        MonteCarloRequest: {
+            /** End */
+            end?: string | null;
+            /**
+             * Horizon Days
+             * @default 252
+             */
+            horizon_days: number;
+            /**
+             * Index Name
+             * @default NIFTY500
+             */
+            index_name: string;
+            /**
+             * Lookback
+             * @default 504
+             */
+            lookback: number;
+            /**
+             * Method
+             * @description block | iid
+             * @default block
+             */
+            method: string;
+            /**
+             * N Simulations
+             * @default 5000
+             */
+            n_simulations: number;
+            /** Start */
+            start?: string | null;
+            /** Weights */
+            weights?: {
+                [key: string]: number;
+            } | null;
         };
         /**
          * Num
@@ -1425,6 +1754,34 @@ export interface components {
             /** Ticker */
             ticker: string;
         };
+        /**
+         * TradeOut
+         * @description One closed round trip.
+         */
+        TradeOut: {
+            costs: components["schemas"]["Num"];
+            /**
+             * Entry Date
+             * Format: date
+             */
+            entry_date: string;
+            /** Entry Display */
+            entry_display: string;
+            entry_price: components["schemas"]["Num"];
+            /** Exit Date */
+            exit_date: string | null;
+            /** Exit Display */
+            exit_display: string;
+            exit_price: components["schemas"]["Num"];
+            holding_days: components["schemas"]["Num"];
+            /** Is Win */
+            is_win: boolean;
+            pnl: components["schemas"]["Num"];
+            quantity: components["schemas"]["Num"];
+            return_pct: components["schemas"]["Num"];
+            /** Security Id */
+            security_id: string;
+        };
         /** VaREntry */
         VaREntry: {
             confidence: components["schemas"]["Num"];
@@ -1659,6 +2016,71 @@ export interface operations {
             };
         };
     };
+    catalog_features_get: {
+        parameters: {
+            query?: {
+                /** @description Case-insensitive match on name or description. */
+                search?: string | null;
+                category?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureCatalog"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    feature_features__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     health_health_get: {
         parameters: {
             query?: never;
@@ -1792,6 +2214,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OptimiseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    completeness_quality_completeness_get: {
+        parameters: {
+            query?: {
+                start?: string | null;
+                end?: string | null;
+                /** @description Securities per grid. A heatmap of 500 rows is not readable. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompletenessGrid"];
                 };
             };
             /** @description Validation Error */
@@ -2040,6 +2496,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    beta_risk_beta_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BetaOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    correlation_risk_correlation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorrelationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrelationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    monte_carlo_paths_risk_monte_carlo_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MonteCarloRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonteCarloOut"];
                 };
             };
             /** @description Validation Error */

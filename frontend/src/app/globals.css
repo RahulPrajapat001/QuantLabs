@@ -1,0 +1,106 @@
+/*
+ * The generated tokens are the single source of colour, spacing and type for
+ * both frontends. Imported, never copied — see docs/DESIGN_SYSTEM.md.
+ */
+@import "../../../config/design-tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * next/font mints hashed family names, while the tokens name the families
+ * literally ("Inter", "JetBrains Mono"). This binds one to the other by
+ * PREPENDING the loaded font to the token's own stack: the fallbacks defined in
+ * config/design-tokens.css still apply, and the generated file is not edited.
+ */
+:root {
+  --ql-font-sans: var(--font-inter), "Inter", system-ui, sans-serif;
+  --ql-font-mono: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
+}
+
+@layer base {
+  html {
+    /* 13px base. A research terminal fits more rows than a marketing page. */
+    font-size: var(--ql-text-base);
+  }
+
+  body {
+    background-color: var(--ql-bg);
+    color: var(--ql-text-primary);
+    font-family: var(--ql-font-sans);
+    font-size: var(--ql-text-base);
+    line-height: var(--ql-leading-base);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /*
+   * Every number in the product. Digits of equal width align into columns, so a
+   * reader compares magnitudes by scanning down. A number in Inter is a bug.
+   */
+  .ql-num {
+    font-family: var(--ql-font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "zero" 1;
+  }
+
+  /* Load-bearing boundaries use border-strong; `border` is decorative only. */
+  *:focus-visible {
+    outline: 2px solid var(--ql-border-strong);
+    outline-offset: 1px;
+  }
+
+  ::selection {
+    background-color: var(--ql-surface-raised);
+  }
+
+  /* Scrollbars are chrome, not content: neutral, never accented. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ql-border-strong) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--ql-border-strong);
+    border-radius: var(--ql-radius);
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  /*
+   * The one permitted transition (§1: no decorative motion). Anything that
+   * wants to move instead of fade is out of spec.
+   */
+  .ql-fade {
+    transition: opacity 150ms ease-out;
+  }
+}
+
+/*
+ * Reduced motion REMOVES the animation rather than shortening it.
+ *
+ * The common `animation-duration: 0.01ms !important` idiom is a trap here: a
+ * fade-in whose keyframes start at `opacity: 0` and which has no fill mode can
+ * be left parked at its first keyframe, so the content never becomes visible.
+ * `animation: none` drops the animation entirely and the element renders at its
+ * base style — visible, immediately. Hiding data from a reader who asked for
+ * less motion is the opposite of the accommodation.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -22,6 +22,10 @@ ANNUALISATION: float = float(np.sqrt(252.0))
     dependencies=["return_1d"],
     lookback=60,
     category="risk_adjusted",
+    description=(
+        "Sharpe ratio over a rolling 60 sessions. In-sample and undeflated — not a "
+        "reportable result."
+    ),
 )
 def rolling_sharpe_60(df: pd.DataFrame) -> pd.Series[float]:
     r = df["return_1d"]
@@ -33,6 +37,10 @@ def rolling_sharpe_60(df: pd.DataFrame) -> pd.Series[float]:
     dependencies=["return_1d"],
     lookback=120,
     category="risk_adjusted",
+    description=(
+        "Sharpe ratio over a rolling 120 sessions. In-sample and undeflated — not a "
+        "reportable result."
+    ),
 )
 def rolling_sharpe_120(df: pd.DataFrame) -> pd.Series[float]:
     r = df["return_1d"]
@@ -49,6 +57,9 @@ def _downside_std(returns: pd.Series[float], window: int) -> pd.Series[float]:
     dependencies=["return_1d"],
     lookback=60,
     category="risk_adjusted",
+    description=(
+        "Sortino ratio over 60 sessions: excess return over downside deviation only."
+    ),
 )
 def rolling_sortino_60(df: pd.DataFrame) -> pd.Series[float]:
     r = df["return_1d"]
@@ -60,6 +71,9 @@ def rolling_sortino_60(df: pd.DataFrame) -> pd.Series[float]:
     dependencies=["return_1d"],
     lookback=120,
     category="risk_adjusted",
+    description=(
+        "Sortino ratio over 120 sessions: excess return over downside deviation only."
+    ),
 )
 def rolling_sortino_120(df: pd.DataFrame) -> pd.Series[float]:
     r = df["return_1d"]
@@ -71,6 +85,7 @@ def rolling_sortino_120(df: pd.DataFrame) -> pd.Series[float]:
     dependencies=["return_1d"],
     lookback=252,
     category="risk_adjusted",
+    description="Trailing one-year return divided by its maximum drawdown.",
 )
 def calmar_252(df: pd.DataFrame) -> pd.Series[float]:
     def _calmar(window: np.ndarray) -> float:
@@ -99,6 +114,7 @@ def _rolling_beta(
     dependencies=["return_1d", "market_return"],
     lookback=60,
     category="risk_adjusted",
+    description="Rolling 60-session beta against the equal-weighted market return.",
 )
 def beta_60(df: pd.DataFrame) -> pd.Series[float]:
     return _rolling_beta(df["return_1d"], df["market_return"], 60)
@@ -109,6 +125,7 @@ def beta_60(df: pd.DataFrame) -> pd.Series[float]:
     dependencies=["return_1d", "market_return"],
     lookback=120,
     category="risk_adjusted",
+    description="Rolling 120-session beta against the equal-weighted market return.",
 )
 def beta_120(df: pd.DataFrame) -> pd.Series[float]:
     return _rolling_beta(df["return_1d"], df["market_return"], 120)
@@ -119,6 +136,9 @@ def beta_120(df: pd.DataFrame) -> pd.Series[float]:
     dependencies=["return_1d", "market_return", "beta_60"],
     lookback=60,
     category="risk_adjusted",
+    description=(
+        "Rolling 60-session intercept against the market: return not explained by beta."
+    ),
 )
 def alpha_60(df: pd.DataFrame) -> pd.Series[float]:
     # Rolling CAPM intercept: E[r] - beta * E[r_mkt] over the window.
@@ -132,6 +152,10 @@ def alpha_60(df: pd.DataFrame) -> pd.Series[float]:
     dependencies=["return_1d", "market_return", "beta_120"],
     lookback=120,
     category="risk_adjusted",
+    description=(
+        "Rolling 120-session intercept against the market: return not explained by "
+        "beta."
+    ),
 )
 def alpha_120(df: pd.DataFrame) -> pd.Series[float]:
     mean_r = df["return_1d"].rolling(120).mean()

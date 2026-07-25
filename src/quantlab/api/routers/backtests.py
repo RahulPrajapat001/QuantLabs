@@ -27,6 +27,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from quantlab.api.deps import SessionDep, load_price_panel, session_factory
+from quantlab.api.formatting import EM_DASH
 from quantlab.api.jobs import Job, JobState, get_registry
 from quantlab.api.models import (
     CostModelStatus,
@@ -91,6 +92,33 @@ class EquityPoint(BaseModel):
     drawdown: float = Field(description="Negative fraction from the running peak.")
 
 
+#: Trades returned with a result. A five-year daily strategy closes thousands of
+#: round trips and no one reads past the first screen; the count is reported
+#: exactly regardless.
+TRADE_LOG_LIMIT = 500
+
+
+class TradeOut(BaseModel):
+    """One closed round trip."""
+
+    model_config = ConfigDict(frozen=True)
+
+    security_id: str
+    entry_date: date
+    entry_display: str
+    exit_date: date | None
+    exit_display: str
+    holding_days: Num
+    quantity: Num
+    entry_price: Num
+    exit_price: Num
+    #: Costs charged across both legs, already deducted from ``pnl``.
+    costs: Num
+    pnl: Num
+    return_pct: Num
+    is_win: bool
+
+
 class BacktestResult(BaseModel):
     """A completed backtest. The Sharpe is an object; there is no bare float."""
 
@@ -125,6 +153,11 @@ class BacktestResult(BaseModel):
     trading_days: Num
     #: Ready to plot. The frontend computes nothing.
     equity_curve: list[EquityPoint]
+    #: Closed round trips, most recent first, capped at ``TRADE_LOG_LIMIT``.
+    #: ``trades`` above is the true count — the log is a window onto it, and
+    #: ``trade_log_truncated`` says when the two differ.
+    trade_log: list[TradeOut]
+    trade_log_truncated: bool
 
 
 class JobOut(BaseModel):
@@ -299,6 +332,7 @@ def _to_result(
     engine: Any,
 ) -> BacktestResult:
     curve = _equity_curve(engine)
+    trades, trades_truncated = _trade_log(engine)
     return BacktestResult(
         run_id=run_id,
         strategy=request.strategy,
@@ -339,7 +373,44 @@ def _to_result(
         final_equity=Num.currency(metrics.final_equity),
         trading_days=Num.count(metrics.trading_days),
         equity_curve=curve,
+        trade_log=trades,
+        trade_log_truncated=trades_truncated,
     )
+
+
+def _trade_log(engine: Any) -> tuple[list[TradeOut], bool]:
+    """Closed round trips, newest first.
+
+    Reads the ledger's own trade objects rather than ``trades_frame()``: the
+    frame is for analysis in a notebook, and round-tripping through pandas here
+    would turn typed dates into timestamps for no benefit.
+    """
+
+    ledger = getattr(engine, "ledger", None)
+    closed = list(getattr(ledger, "closed_trades", []) or [])
+    if not closed:
+        return [], False
+
+    closed.sort(key=lambda t: t.exit_date or t.entry_date, reverse=True)
+    window = closed[:TRADE_LOG_LIMIT]
+    return [
+        TradeOut(
+            security_id=t.security_id,
+            entry_date=t.entry_date,
+            entry_display=t.entry_date.isoformat(),
+            exit_date=t.exit_date,
+            exit_display=t.exit_date.isoformat() if t.exit_date else EM_DASH,
+            holding_days=Num.count(t.holding_days),
+            quantity=Num.count(t.quantity),
+            entry_price=Num.currency(t.entry_price),
+            exit_price=Num.currency(t.exit_price),
+            costs=Num.currency(t.costs),
+            pnl=Num.currency(t.pnl),
+            return_pct=Num.percent(t.return_pct),
+            is_win=bool(t.is_win),
+        )
+        for t in window
+    ], len(closed) > len(window)
 
 
 def _equity_curve(engine: Any) -> list[EquityPoint]:

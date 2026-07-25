@@ -47,6 +47,10 @@ for _w in SMA_WINDOWS:
         dependencies=["close"],
         lookback=_w,
         category="moving_average",
+        description=(
+            f"Simple moving average of close over {_w} sessions; every bar "
+            "weighted equally."
+        ),
     )
 
 for _w in EMA_WINDOWS:
@@ -56,6 +60,10 @@ for _w in EMA_WINDOWS:
         dependencies=["close"],
         lookback=_w,
         category="moving_average",
+        description=(
+            f"Exponential moving average of close, span {_w}; recent bars "
+            "weighted more heavily."
+        ),
     )
 
 for _w in WMA_WINDOWS:
@@ -65,4 +73,5 @@ for _w in WMA_WINDOWS:
         dependencies=["close"],
         lookback=_w,
         category="moving_average",
+        description=(f"Linearly weighted moving average of close over {_w} sessions."),
     )

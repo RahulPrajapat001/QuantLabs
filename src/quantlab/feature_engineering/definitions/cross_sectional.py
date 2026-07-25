@@ -49,6 +49,10 @@ for _suffix, _base in (
         lookback=0,
         category="cross_sectional",
         kind=FeatureKind.CROSS_SECTIONAL,
+        description=(
+            f"Cross-sectional z-score of {_base} across the universe on each date. "
+            "Lookback is 0: it needs no history of its own, only its input's."
+        ),
     )
 
 for _suffix, _base in (
@@ -63,4 +67,8 @@ for _suffix, _base in (
         lookback=0,
         category="cross_sectional",
         kind=FeatureKind.CROSS_SECTIONAL,
+        description=(
+            f"Cross-sectional percentile rank of {_base} across the universe on "
+            "each date, in (0, 1]."
+        ),
     )

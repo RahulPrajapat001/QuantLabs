@@ -22,7 +22,11 @@ dependencies = [
 data = [
     "pandas>=2.2",
     "numpy>=1.26",
-    "pyarrow>=15.0",
+    # Upper bound is a mypy constraint, not a runtime one: pyarrow 24.0 ships
+    # `dataset`, `field` and `write_dataset` as untyped, so every call in
+    # feature_engineering/build.py fails `--strict` with no-untyped-call. Lift
+    # the bound once pyarrow's stubs cover pyarrow.dataset again.
+    "pyarrow>=15.0,<24.0",
     "sqlalchemy>=2.0",
     "alembic>=1.13",
     "pandera>=0.18",
@@ -52,6 +56,13 @@ api = [
     "uvicorn[standard]>=0.29",
     "plotly>=5.20",
     "streamlit>=1.33",
+]
+# The researcher-facing Streamlit dashboard. Split out from `api` because it is
+# a *client* of the API, not part of it: a deployment that serves the API to the
+# Next.js frontend has no reason to install Streamlit.
+dashboard = [
+    "streamlit>=1.33",
+    "requests>=2.31",
 ]
 # --- M4: Reporting -----------------------------------------------------------
 reports = [

@@ -40,8 +40,30 @@ export type VaROut = Schemas["VaROut"];
 export type StressReportOut = Schemas["StressReportOut"];
 export type QualityReport = Schemas["QualityReport"];
 export type SecurityPage = Schemas["SecurityPage"];
+export type SecurityOut = Schemas["SecurityOut"];
 export type MembershipOut = Schemas["MembershipOut"];
 export type SurvivorshipComparison = Schemas["SurvivorshipComparison"];
+export type IntervalOut = Schemas["IntervalOut"];
+export type FeatureCatalog = Schemas["FeatureCatalog"];
+export type FeatureOut = Schemas["FeatureOut"];
+export type FeaturePanel = Schemas["FeaturePanel"];
+export type BarSeries = Schemas["BarSeries"];
+export type FactorSummary = Schemas["FactorSummary"];
+export type StrategySummary = Schemas["StrategySummary"];
+export type HypothesisOut = Schemas["HypothesisOut"];
+export type CompletenessGrid = Schemas["CompletenessGrid"];
+export type Finding = Schemas["Finding"];
+export type BetaOut = Schemas["BetaOut"];
+export type CorrelationOut = Schemas["CorrelationOut"];
+export type MonteCarloOut = Schemas["MonteCarloOut"];
+export type StressWindowOut = Schemas["StressWindowOut"];
+export type CoverageOut = Schemas["CoverageOut"];
+export type TradeOut = Schemas["TradeOut"];
+export type EquityPoint = Schemas["EquityPoint"];
+export type ICStatsOut = Schemas["ICStatsOut"];
+export type Holding = Schemas["Holding"];
+export type VaREntry = Schemas["VaREntry"];
+export type StressResultOut = Schemas["StressResultOut"];
 
 /** Every path the API serves, for callers that build URLs generically. */
 export type ApiPaths = paths;
@@ -119,10 +141,19 @@ export class QuantLabClient {
     return this.request<SecurityPage>("/securities", { query });
   }
 
+  security(securityId: string): Promise<SecurityOut> {
+    return this.request<SecurityOut>(`/securities/${securityId}`);
+  }
+
   universeAsOf(indexName: string, on: string): Promise<MembershipOut> {
     return this.request<MembershipOut>(`/universe/${indexName}/as-of`, {
       query: { on },
     });
+  }
+
+  /** Every membership interval — the date scrubber's timeline. */
+  universeIntervals(indexName: string): Promise<IntervalOut[]> {
+    return this.request<IntervalOut[]>(`/universe/${indexName}/intervals`);
   }
 
   survivorship(indexName: string, on: string): Promise<SurvivorshipComparison> {
@@ -147,14 +178,48 @@ export class QuantLabClient {
     return this.request<Schemas["FeaturePanel"]>("/market/features", { query });
   }
 
-  qualityFindings(query?: { security_id?: string; limit?: number }) {
+  qualityFindings(query?: {
+    security_id?: string;
+    start?: string;
+    end?: string;
+    limit?: number;
+    refresh?: boolean;
+  }) {
     return this.request<QualityReport>("/quality/findings", { query });
+  }
+
+  /** Bar coverage per security per month — the completeness heatmap. */
+  completeness(query?: { start?: string; end?: string; limit?: number }) {
+    return this.request<CompletenessGrid>("/quality/completeness", { query });
+  }
+
+  // --- Feature registry ---
+
+  /** What *can* be computed. `features()` above serves the values. */
+  featureCatalog(query?: { search?: string; category?: string; limit?: number }) {
+    return this.request<FeatureCatalog>("/features", { query });
+  }
+
+  feature(name: string): Promise<FeatureOut> {
+    return this.request<FeatureOut>(`/features/${name}`);
   }
 
   // --- Research ---
 
+  factors(): Promise<FactorSummary[]> {
+    return this.request<FactorSummary[]>("/factors");
+  }
+
   evaluateFactor(body: Schemas["EvaluationRequest"]): Promise<EvaluationOut> {
     return this.post<EvaluationOut>("/factors/evaluate", body);
+  }
+
+  hypotheses(): Promise<HypothesisOut[]> {
+    return this.request<HypothesisOut[]>("/research/hypotheses");
+  }
+
+  run(runId: string): Promise<RunOut> {
+    return this.request<RunOut>(`/research/log/${runId}`);
   }
 
   researchLog(query?: { strategy?: string; status?: string; limit?: number }) {
@@ -173,6 +238,14 @@ export class QuantLabClient {
   }
 
   // --- Backtests ---
+
+  strategies(): Promise<StrategySummary[]> {
+    return this.request<StrategySummary[]>("/backtests/strategies");
+  }
+
+  jobs(): Promise<JobOut[]> {
+    return this.request<JobOut[]>("/backtests/jobs");
+  }
 
   submitBacktest(body: BacktestRequest): Promise<JobOut> {
     return this.post<JobOut>("/backtests", body);
@@ -218,8 +291,34 @@ export class QuantLabClient {
     return this.post<StressReportOut>("/risk/stress", body);
   }
 
+  stressWindows(): Promise<StressWindowOut[]> {
+    return this.request<StressWindowOut[]>("/risk/stress/windows");
+  }
+
+  stressCoverage(): Promise<CoverageOut[]> {
+    return this.request<CoverageOut[]>("/risk/stress/coverage");
+  }
+
+  /** Rolling beta and alpha against the equal-weighted index. */
+  beta(body: Schemas["BetaRequest"]): Promise<BetaOut> {
+    return this.post<BetaOut>("/risk/beta", body);
+  }
+
+  correlation(body: Schemas["CorrelationRequest"]): Promise<CorrelationOut> {
+    return this.post<CorrelationOut>("/risk/correlation", body);
+  }
+
+  /** Bootstrapped forward paths. A resampling of history, not a forecast. */
+  monteCarlo(body: Schemas["MonteCarloRequest"]): Promise<MonteCarloOut> {
+    return this.post<MonteCarloOut>("/risk/monte-carlo", body);
+  }
+
   optimise(body: Schemas["OptimiseRequest"]): Promise<OptimiseOut> {
     return this.post<OptimiseOut>("/portfolio/optimise", body);
+  }
+
+  portfolioMethods(): Promise<string[]> {
+    return this.request<string[]>("/portfolio/methods");
   }
 
   // --- Reports ---

@@ -56,6 +56,15 @@ class MonteCarloResult:
     #: Observations in the source sample the paths were drawn from.
     source_observations: int
     periods_per_year: int = TRADING_DAYS
+    #: Equity quantile *bands* over the horizon — the fan chart — indexed by day
+    #: with one column per requested percentile. ``None`` unless ``monte_carlo``
+    #: was called with ``path_percentiles``.
+    #:
+    #: Bands, not paths: retaining 10,000 × 252 floats to plot five lines is a
+    #: waste, and a band is what a fan chart draws anyway. Note that a band is
+    #: not a path — the 5th-percentile line is the 5th percentile *on each day*,
+    #: which no single simulation traced.
+    path_bands: pd.DataFrame | None = field(default=None, repr=False)
 
     def percentiles(
         self, percentiles: tuple[float, ...] = DEFAULT_PERCENTILES
@@ -205,6 +214,7 @@ def monte_carlo(
     block_size: int | None = None,
     periods_per_year: int = TRADING_DAYS,
     seed: int | None = 0,
+    path_percentiles: tuple[float, ...] | None = None,
 ) -> MonteCarloResult:
     """Simulate forward paths by resampling ``returns``.
 
@@ -214,6 +224,10 @@ def monte_carlo(
 
     ``seed`` is fixed by default so a reported percentile is reproducible. Pass
     ``None`` for genuine randomness, and expect the numbers to move.
+
+    ``path_percentiles`` additionally retains the equity quantile bands over the
+    horizon (:attr:`MonteCarloResult.path_bands`), which is what a fan chart
+    plots. It is off by default because the summary statistics do not need it.
     """
 
     values = _prepare(returns)
@@ -249,6 +263,16 @@ def monte_carlo(
             terminal > 0, np.power(np.maximum(terminal, 1e-12), 1.0 / years) - 1.0, -1.0
         )
 
+    bands: pd.DataFrame | None = None
+    if path_percentiles:
+        bands = pd.DataFrame(
+            {
+                f"p{round(p * 100):02d}": np.quantile(equity, p, axis=0)
+                for p in path_percentiles
+            },
+            index=pd.RangeIndex(1, horizon_days + 1, name="day"),
+        )
+
     return MonteCarloResult(
         terminal_values=terminal,
         max_drawdowns=max_drawdowns,
@@ -259,4 +283,5 @@ def monte_carlo(
         block_size=resolved_block,
         source_observations=int(values.size),
         periods_per_year=periods_per_year,
+        path_bands=bands,
     )
