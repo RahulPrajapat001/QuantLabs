@@ -15,11 +15,9 @@ from datetime import date
 
 import pandas as pd
 
-from quantlab.config import HOLDOUT_START, get_settings
+from quantlab.config import HOLDOUT_START, HoldoutViolationError, holdout_is_unlocked
 
-
-class HoldoutViolationError(RuntimeError):
-    """Raised when factor evaluation touches locked holdout data."""
+__all__ = ["HoldoutViolationError", "guard_holdout"]
 
 
 def _to_date(value: object) -> date:
@@ -45,7 +43,7 @@ def guard_holdout(dates: Iterable[object], *, allow_holdout: bool = False) -> No
     if latest < HOLDOUT_START:
         return
 
-    if allow_holdout and get_settings().unlock_holdout:
+    if allow_holdout and holdout_is_unlocked():
         return
 
     reason = (

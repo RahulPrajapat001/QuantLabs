@@ -342,6 +342,213 @@ def features_benchmark(
         typer.echo(f"Wrote {path}")
 
 
+research_app = typer.Typer(
+    help="Research integrity: the log, multiple-testing corrections, pre-registration."
+)
+app.add_typer(research_app, name="research")
+
+
+@research_app.command("log")
+def research_log_cmd(
+    summary: bool = typer.Option(
+        False,
+        "--summary",
+        help="Aggregate view: trials count, holdout runs, best Sharpe.",
+    ),
+    strategy: str = typer.Option(
+        None, "--strategy", help="Restrict the listing to one strategy name."
+    ),
+    limit: int = typer.Option(
+        20, "--limit", help="Rows to list (ignored with --summary)."
+    ),
+    all_statuses: bool = typer.Option(
+        False, "--all", help="Include running and failed rows, not just completed ones."
+    ),
+) -> None:
+    """Query the research log.
+
+    Examples::
+
+        quantlab research log --summary
+        quantlab research log --strategy momentum_12_1 --limit 50
+    """
+
+    from quantlab.db.session import create_db_engine, create_session_factory
+    from quantlab.research.log import ResearchLog
+
+    engine = create_db_engine()
+    factory = create_session_factory(engine)
+    session = factory()
+    try:
+        research_log = ResearchLog(session)
+        if summary:
+            typer.echo(research_log.summary().render())
+            return
+
+        entries = research_log.entries(
+            strategy_name=strategy,
+            status=None if all_statuses else "complete",
+            limit=limit,
+        )
+        if not entries:
+            typer.echo("No runs logged yet.")
+            return
+        typer.echo(
+            f"{'run_id':10} {'when':20} {'strategy':24} {'split':18} "
+            f"{'sharpe':>8} {'status':9} flags"
+        )
+        for entry in entries:
+            flags = []
+            if entry.holdout_touched:
+                flags.append("HOLDOUT")
+            flags.append(
+                "exploratory" if entry.exploratory else f"prereg:{entry.hypothesis_id}"
+            )
+            if entry.git_dirty:
+                flags.append("dirty")
+            sharpe = "-" if entry.sharpe is None else f"{entry.sharpe:8.3f}"
+            when = entry.created_at.isoformat(sep=" ", timespec="seconds")[:19]
+            typer.echo(
+                f"{entry.run_id[:10]} {when:20} {entry.strategy_name[:24]:24} "
+                f"{entry.split[:18]:18} {sharpe:>8} {entry.status:9} {' '.join(flags)}"
+            )
+        typer.echo("")
+        typer.echo(
+            f"Trials in log (all strategies, completed): {research_log.trials()}. "
+            "Any Sharpe above is undeflated — see 'quantlab research deflate'."
+        )
+    finally:
+        session.close()
+
+
+@research_app.command("deflate")
+def research_deflate_cmd(
+    strategy: str = typer.Option(
+        None, "--strategy", help="Deflate this strategy's best logged run."
+    ),
+    run_id: str = typer.Option(None, "--run-id", help="Deflate one specific run."),
+    scope_strategy: bool = typer.Option(
+        False,
+        "--scope-strategy",
+        help=(
+            "Count trials only within this strategy name instead of the whole log. "
+            "Less conservative: strategy and model search are one selection process."
+        ),
+    ),
+    simulate_null: bool = typer.Option(
+        True,
+        "--simulate-null/--no-simulate-null",
+        help="Also simulate the expected maximum Sharpe of an edgeless search.",
+    ),
+    simulations: int = typer.Option(
+        1000, "--simulations", help="Monte Carlo paths for the null distribution."
+    ),
+) -> None:
+    """Deflate a logged Sharpe against the trials count in ``research_log``.
+
+    Example::
+
+        quantlab research deflate --strategy momentum_12_1
+    """
+
+    from quantlab.db.session import create_db_engine, create_session_factory
+    from quantlab.research.deflated import (
+        DeflationError,
+        deflate_run,
+        deflate_strategy,
+        null_max_sharpe_for_run,
+    )
+    from quantlab.research.log import ResearchLogError
+
+    if not strategy and not run_id:
+        raise typer.BadParameter("provide --strategy or --run-id")
+
+    engine = create_db_engine()
+    factory = create_session_factory(engine)
+    session = factory()
+    try:
+        from quantlab.research.log import ResearchLog
+
+        research_log = ResearchLog(session)
+        scope = strategy if (scope_strategy and strategy) else None
+        try:
+            if run_id:
+                result = deflate_run(research_log, run_id, scope_strategy=scope)
+            else:
+                result = deflate_strategy(research_log, strategy, scope_strategy=scope)
+        except (ResearchLogError, DeflationError) as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(code=1) from exc
+
+        typer.echo(result.render())
+        if simulate_null and result.run_id is not None:
+            typer.echo("")
+            null = null_max_sharpe_for_run(
+                research_log,
+                result.run_id,
+                scope_strategy=scope,
+                n_simulations=simulations,
+            )
+            typer.echo(null.render(result.observed_sharpe))
+    finally:
+        session.close()
+
+
+@research_app.command("prereg")
+def research_prereg_cmd(
+    validate_only: bool = typer.Option(
+        False,
+        "--validate",
+        help="Validate docs/hypotheses.md and exit non-zero on error.",
+    ),
+    check_log: bool = typer.Option(
+        True,
+        "--check-log/--no-check-log",
+        help="Also check logged runs against the hypotheses they claim to test.",
+    ),
+    no_git: bool = typer.Option(
+        False, "--no-git", help="Skip git-history checks (faster; less evidence)."
+    ),
+) -> None:
+    """Validate the pre-registration document.
+
+    Example::
+
+        quantlab research prereg --validate
+    """
+
+    from quantlab.research.preregister import validate, validate_against_log
+
+    report = validate(check_git=not no_git)
+    typer.echo(report.render())
+
+    issues = []
+    if check_log:
+        try:
+            from quantlab.db.session import create_db_engine, create_session_factory
+            from quantlab.research.log import ResearchLog
+
+            engine = create_db_engine()
+            factory = create_session_factory(engine)
+            session = factory()
+            try:
+                entries = ResearchLog(session).entries(status=None)
+                issues = validate_against_log(entries)
+            finally:
+                session.close()
+        except Exception as exc:
+            typer.echo(f"\n(could not cross-check research_log: {exc})", err=True)
+        if issues:
+            typer.echo("")
+            typer.echo("Logged runs vs. registered hypotheses:")
+            for issue in issues:
+                typer.echo(f"  {issue.render()}")
+
+    failed = not report.ok or any(i.severity == "error" for i in issues)
+    if validate_only and failed:
+        raise typer.Exit(code=1)
+
+
 def main() -> None:
     """Console-script entry point (see ``[project.scripts]`` in pyproject.toml)."""
     app()

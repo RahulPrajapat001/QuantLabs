@@ -10,6 +10,7 @@ See ``CLAUDE.md`` §3 (Research Integrity) and ``docs/PRD.md`` §4.
 from __future__ import annotations
 
 from datetime import date
+from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 
@@ -53,6 +54,10 @@ class Settings(BaseSettings):
     reference_dir: Path = Field(default=Path("data/raw/reference"))
     features_dir: Path = Field(default=Path("data/features"))
     database_url: str = Field(default="sqlite:///quantlab.db")
+    #: Pre-registration document (PRD §4.5). Resolved relative to the working
+    #: directory, then to the git repository root, so the CLI works from any
+    #: subdirectory. Never referenced as a literal at a call site.
+    hypotheses_file: Path = Field(default=Path("docs/hypotheses.md"))
 
     # Universe / backtest
     #: Recovery rate applied when a security is delisted for bankruptcy: the
@@ -86,3 +91,116 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return the process-wide settings singleton."""
     return Settings()
+
+
+# --- Holdout lockout (CLAUDE.md §3, PRD §4.2) --------------------------------
+#
+# The lock lives here, beside ``HOLDOUT_START``, so that every enforcement point
+# — the backtester's ``DataHandler``, factor evaluation, the research log — shares
+# one error type and one definition of "unlocked". Two guards that disagree about
+# what is locked are worse than no guard at all.
+
+
+class HoldoutViolationError(RuntimeError):
+    """Raised when locked holdout data (2024-01-01 onward) is touched.
+
+    Shared by every enforcement point so ``except HoldoutViolationError`` catches
+    the violation wherever it originates.
+    """
+
+
+def holdout_is_unlocked() -> bool:
+    """Whether ``QUANTLAB_UNLOCK_HOLDOUT=1`` is set in the environment.
+
+    This is necessary but never sufficient: each call site must *also* be handed
+    an explicit opt-in (``holdout=True`` / ``allow_holdout=True``). Requiring two
+    independent switches means neither a stray environment variable nor a
+    copy-pasted keyword argument can unlock the holdout on its own.
+    """
+
+    return get_settings().unlock_holdout
+
+
+def assert_holdout_allowed(
+    latest: date,
+    *,
+    holdout: bool,
+    context: str = "this operation",
+) -> None:
+    """Raise :class:`HoldoutViolationError` unless ``latest`` is legitimately allowed.
+
+    ``latest`` is the most recent date the caller intends to touch. Data strictly
+    before :data:`HOLDOUT_START` always passes. At or past it, the caller must
+    have passed ``holdout=True`` *and* set ``QUANTLAB_UNLOCK_HOLDOUT=1``.
+    """
+
+    if latest < HOLDOUT_START:
+        return
+    if holdout and holdout_is_unlocked():
+        return
+
+    reason = (
+        "the explicit holdout opt-in was given but QUANTLAB_UNLOCK_HOLDOUT=1 is "
+        "not set in the environment"
+        if holdout
+        else "the holdout is locked and no explicit holdout opt-in was given"
+    )
+    raise HoldoutViolationError(
+        f"{context} reaches {latest.isoformat()}, at/past the locked holdout start "
+        f"{HOLDOUT_START.isoformat()}: {reason}. The holdout is evaluated exactly "
+        "once, at the end of the project; no result computed on it may inform any "
+        "strategy, parameter or feature decision (CLAUDE.md §3)."
+    )
+
+
+class Split(StrEnum):
+    """A canonical data split (PRD §4.1)."""
+
+    TRAIN = "train"
+    VALIDATION = "validation"
+    HOLDOUT = "holdout"
+
+
+#: Half-open bounds ``[start, end)`` of each split, in chronological order.
+_SPLIT_BOUNDS: tuple[tuple[Split, date, date | None], ...] = (
+    (Split.TRAIN, DATA_START, date(TRAIN_END.year, 12, 31)),
+    (Split.VALIDATION, date(TRAIN_END.year + 1, 1, 1), VALIDATION_END),
+    (Split.HOLDOUT, HOLDOUT_START, None),
+)
+
+
+def splits_touched(start: date, end: date) -> tuple[Split, ...]:
+    """Return every split the inclusive range ``[start, end]`` overlaps."""
+
+    if end < start:
+        raise ValueError(f"end {end.isoformat()} precedes start {start.isoformat()}")
+    touched = [
+        split
+        for split, lo, hi in _SPLIT_BOUNDS
+        if start <= (hi if hi is not None else end) and end >= lo
+    ]
+    return tuple(touched)
+
+
+def resolve_split(start: date, end: date) -> str:
+    """Label the split(s) covered by ``[start, end]`` for the research log.
+
+    A range confined to one split gets that split's name; one that straddles
+    several is labelled by every split it touches (e.g. ``"train+validation"``),
+    because a run whose window silently spans a boundary must not be filed under
+    the cleaner of the two. Data before :data:`DATA_START` is ``"pre-sample"``.
+    """
+
+    touched = splits_touched(start, end)
+    if not touched:
+        return "pre-sample"
+    label = "+".join(split.value for split in touched)
+    if start < DATA_START:
+        return f"pre-sample+{label}"
+    return label
+
+
+def touches_holdout(end: date) -> bool:
+    """Whether a run ending on ``end`` reaches into the locked holdout."""
+
+    return end >= HOLDOUT_START
