@@ -361,16 +361,21 @@ def registration_commit(
     """
 
     resolved = hypotheses_path(path)
+    root = repo_root()
     rel = relative_to_repo(resolved)
-    if rel is None:
+    if rel is None or root is None:
         return None
-    history = run_git(["log", "--reverse", "--format=%H|%cI", "--", rel])
+    # Run from the work-tree root: a pathspec is resolved relative to the process
+    # working directory, and run_git otherwise anchors itself inside the package,
+    # where "docs/hypotheses.md" matches nothing and every hypothesis would look
+    # uncommitted.
+    history = run_git(["log", "--reverse", "--format=%H|%cI", "--", rel], cwd=root)
     if not history:
         return None
     target = hypothesis.content_hash
     for line in history.splitlines():
         commit_hash, _, committed_at = line.partition("|")
-        blob = run_git(["show", f"{commit_hash}:{rel}"])
+        blob = run_git(["show", f"{commit_hash}:{rel}"], cwd=root)
         if not blob:
             continue
         try:
