@@ -1,9 +1,10 @@
 """SQLAlchemy ORM models for the QuantLab data platform.
 
-These cover Module 1 (ingestion) and Module 2 (universe construction) of the
-schema in ``docs/PRD.md`` §Module 14: ``securities``, ``ticker_history``,
-``ohlcv_daily``, ``corporate_actions``, ``ingest_log``, ``index_membership`` and
-``unresolved_membership_change``. Later milestones extend the same ``Base``.
+These cover Module 1 (ingestion), Module 2 (universe construction) and Module 3
+(validation) of the schema in ``docs/PRD.md`` §Module 14: ``securities``,
+``ticker_history``, ``ohlcv_daily``, ``corporate_actions``, ``ingest_log``,
+``index_membership``, ``unresolved_membership_change`` and
+``data_quality_findings``. Later milestones extend the same ``Base``.
 
 Design notes:
 
@@ -29,6 +30,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
@@ -267,6 +269,70 @@ class UnresolvedMembershipChange(Base):
             f"<UnresolvedMembershipChange {self.action} "
             f"{self.ticker or self.company_name!r} {self.index_name} "
             f"@ {self.effective_date}>"
+        )
+
+
+class DataQualityFinding(Base):
+    """One structured defect found by a validation run (PRD Module 3).
+
+    Findings were previously computed per API request and thrown away. Persisting
+    them buys three things a recomputed finding cannot have: a stable ``id`` to
+    refer to, a ``created_at`` so the same defect is visible as recurring rather
+    than new, and a ``run_id`` grouping every finding from one
+    :func:`quantlab.data.validation.validate` call — which is what the Module 3
+    regression guard needs in order to compare severity counts against the
+    previous run.
+
+    ``security_id`` is nullable because not every defect belongs to a security:
+    ``unresolved_membership_change`` is a property of a reconstitution filing.
+    ``date`` is nullable for the same reason — ``missing_adjustment`` and
+    ``no_price_history`` indict an entire series, not one session.
+
+    ``rows_examined`` is constant across a ``run_id`` and so is strictly
+    denormalised. It is stored per row deliberately: the alternative is a second
+    table holding one integer per run, and carrying it here keeps a run fully
+    reconstructible from this table alone.
+    """
+
+    __tablename__ = "data_quality_findings"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    #: UUID4 hex, minted by the validation run — groups one run's findings.
+    run_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+
+    #: Check name, e.g. ``"extreme_move"``. Matches
+    #: :data:`quantlab.data.validation.CHECKS`.
+    check: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    #: ``"error"`` | ``"warning"`` | ``"info"`` — the value of
+    #: :class:`quantlab.data.validation.Severity`.
+    severity: Mapped[str] = mapped_column(String(8), nullable=False, index=True)
+    security_id: Mapped[str | None] = mapped_column(
+        ForeignKey("securities.security_id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    #: The session the defect occurred on, where the defect is dated at all.
+    date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    #: What is wrong.
+    detail: Mapped[str] = mapped_column(String(512), nullable=False)
+    #: What a researcher should do about it. Never blank — a finding without a
+    #: remedy is a complaint.
+    remedy: Mapped[str] = mapped_column(String(512), nullable=False)
+    #: OHLCV rows the producing run examined. Constant per ``run_id``.
+    rows_examined: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        # The endpoint's hot path is "latest run, optionally one security".
+        Index("ix_dq_findings_run_security", "run_id", "security_id"),
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        return (
+            f"<DataQualityFinding {self.severity} {self.check} "
+            f"{self.security_id or '-'} @ {self.date or '-'}>"
         )
 
 

@@ -118,6 +118,50 @@ def test_findings_carry_a_remedy_not_just_a_complaint(client):
         assert finding["remedy"], finding
 
 
+def test_persisted_findings_are_preferred_over_recomputing(client, session):
+    """With a run in the table, the endpoint serves it and says so.
+
+    The seeded fixture is clean, so a real ``validate`` run would persist nothing
+    — the row is inserted directly. That ``validate`` produces exactly what comes
+    back out is covered in ``tests/data/test_validation.py``; what matters here is
+    that the endpoint reads the table rather than rerunning the checks.
+    """
+
+    from datetime import date as _date
+
+    from quantlab.db.models import DataQualityFinding
+
+    session.add(
+        DataQualityFinding(
+            run_id="testrun0000",
+            check="zero_volume",
+            severity="warning",
+            security_id="SEC001",
+            date=_date(2016, 6, 1),
+            detail="zero volume — the security did not trade",
+            remedy="Check for a halt or suspension.",
+            rows_examined=4_242,
+        )
+    )
+    session.commit()
+    try:
+        body = client.get("/quality/findings").json()
+        assert body["generated_on_demand"] is False
+        assert body["run_id"] == "testrun0000"
+        assert body["generated_at"] is not None
+        assert body["rows_examined"]["value"] == 4_242
+        assert [f["check"] for f in body["findings"]] == ["zero_volume"]
+
+        # refresh sidesteps the table without writing to it.
+        fresh = client.get("/quality/findings", params={"refresh": True}).json()
+        assert fresh["generated_on_demand"] is True
+        assert fresh["run_id"] is None
+        assert session.query(DataQualityFinding).count() == 1
+    finally:
+        session.query(DataQualityFinding).delete()
+        session.commit()
+
+
 # --- Research log -------------------------------------------------------------
 
 

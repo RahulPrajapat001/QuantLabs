@@ -198,7 +198,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Run the checks now. */
+        /** Persisted findings, or the checks run now. */
         get: operations["findings_quality_findings_get"];
         put?: never;
         post?: never;
@@ -777,7 +777,10 @@ export interface components {
                 [key: string]: number | null;
             };
         };
-        /** Finding */
+        /**
+         * Finding
+         * @description One defect: what check, how bad, where, and what to do about it.
+         */
         Finding: {
             /** Check */
             check: string;
@@ -1049,12 +1052,21 @@ export interface components {
             /** Findings */
             findings: components["schemas"]["Finding"][];
             /**
+             * Generated At
+             * @description When the persisted run executed. Null on demand.
+             */
+            generated_at?: string | null;
+            /**
              * Generated On Demand
-             * @description These findings are computed per request. There is no persisted data_quality_findings table yet (PRD Module 3).
-             * @default true
+             * @description True when these findings were computed for this request rather than read from data_quality_findings. An on-demand finding has no id and no history: run `quantlab validate` to persist one.
              */
             generated_on_demand: boolean;
             rows_examined: components["schemas"]["Num"];
+            /**
+             * Run Id
+             * @description The validation run these findings came from. Null on demand.
+             */
+            run_id?: string | null;
         };
         /**
          * ReferenceRatio
@@ -1800,6 +1812,8 @@ export interface operations {
                 start?: string | null;
                 end?: string | null;
                 limit?: number;
+                /** @description Skip the table and run the checks now. Does not persist — writing is `quantlab validate`, not a GET. */
+                refresh?: boolean;
             };
             header?: never;
             path?: never;

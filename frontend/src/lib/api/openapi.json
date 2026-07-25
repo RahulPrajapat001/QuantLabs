@@ -811,6 +811,7 @@
         "type": "object"
       },
       "Finding": {
+        "description": "One defect: what check, how bad, where, and what to do about it.",
         "properties": {
           "check": {
             "title": "Check",
@@ -1505,17 +1506,42 @@
             "title": "Findings",
             "type": "array"
           },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the persisted run executed. Null on demand.",
+            "title": "Generated At"
+          },
           "generated_on_demand": {
-            "default": true,
-            "description": "These findings are computed per request. There is no persisted data_quality_findings table yet (PRD Module 3).",
+            "description": "True when these findings were computed for this request rather than read from data_quality_findings. An on-demand finding has no id and no history: run `quantlab validate` to persist one.",
             "title": "Generated On Demand",
             "type": "boolean"
           },
           "rows_examined": {
             "$ref": "#/components/schemas/Num"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The validation run these findings came from. Null on demand.",
+            "title": "Run Id"
           }
         },
         "required": [
+          "generated_on_demand",
           "checks_run",
           "rows_examined",
           "counts",
@@ -3106,6 +3132,18 @@
               "title": "Limit",
               "type": "integer"
             }
+          },
+          {
+            "description": "Skip the table and run the checks now. Does not persist \u2014 writing is `quantlab validate`, not a GET.",
+            "in": "query",
+            "name": "refresh",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Skip the table and run the checks now. Does not persist \u2014 writing is `quantlab validate`, not a GET.",
+              "title": "Refresh",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -3130,7 +3168,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Run the checks now.",
+        "summary": "Persisted findings, or the checks run now.",
         "tags": [
           "quality"
         ]

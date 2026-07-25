@@ -119,6 +119,61 @@ def ingest(
         )
 
 
+@app.command()
+def validate(
+    security_id: str = typer.Option(
+        None, "--security-id", help="Check one security instead of the whole database."
+    ),
+    start: str = typer.Option(
+        None, "--start", help="Inclusive start date (YYYY-MM-DD)."
+    ),
+    end: str = typer.Option(None, "--end", help="Inclusive end date (YYYY-MM-DD)."),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Print the findings without writing them to data_quality_findings.",
+    ),
+) -> None:
+    """Run the Module 3 data-quality checks and persist the findings.
+
+    This is what writes ``data_quality_findings``; ``GET /quality/findings`` reads
+    what this leaves behind and falls back to computing on demand when no run has
+    ever written a row. ``--fail-on-regression`` (PRD Module 3) is not built yet,
+    so this always exits 0 — findings are reported, not enforced.
+    """
+
+    from quantlab.data.validation import run_checks
+    from quantlab.data.validation import validate as run_validation
+    from quantlab.db.session import (
+        create_all,
+        create_db_engine,
+        create_session_factory,
+        session_scope,
+    )
+
+    engine = create_db_engine()
+    create_all(engine)  # no-op once Alembic has run; convenient for first use
+    factory = create_session_factory(engine)
+
+    from_date = _parse_date(start) if start else None
+    to_date = _parse_date(end) if end else None
+    runner = run_checks if dry_run else run_validation
+
+    with session_scope(factory) as session:
+        report = runner(session, security_id=security_id, start=from_date, end=to_date)
+
+    typer.echo(
+        f"Examined {report.rows_examined:,} rows across {len(report.checks_run)} "
+        f"checks; {len(report.findings)} finding(s)."
+    )
+    for check, count in sorted(report.counts.items(), key=lambda kv: -kv[1]):
+        typer.echo(f"  {count:>6}  {check}")
+    if dry_run:
+        typer.echo("Dry run: nothing written.")
+    else:
+        typer.echo(f"Persisted as run_id {report.run_id}.")
+
+
 universe_app = typer.Typer(help="Point-in-time universe construction (PRD Module 2).")
 app.add_typer(universe_app, name="universe")
 
