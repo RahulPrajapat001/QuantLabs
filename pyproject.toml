@@ -60,6 +60,10 @@ reports = [
 # --- Tooling -----------------------------------------------------------------
 dev = [
     "pytest>=8.1",
+    # The design-token generator emits Plotly templates; CI round-trips them
+    # through Plotly's own validator (tests/design), so it needs plotly even
+    # though the charting stack itself belongs to the api extra.
+    "plotly>=5.20",
     "pytest-cov>=5.0",
     "ruff>=0.4",
     "mypy>=1.9",

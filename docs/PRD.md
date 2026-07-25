@@ -625,7 +625,7 @@ Stated up front, and to be repeated in the README. A platform whose limits are d
 
 ---
 
-## 12. Definition of done
+## 12. Definition of done 
 
 The platform is not the deliverable. The deliverable is one research question, investigated honestly enough that its answer — positive or negative — would survive scrutiny from someone who knows the field.
 
