@@ -15,6 +15,9 @@ import typer
 if TYPE_CHECKING:  # pandas is imported lazily inside commands to keep CLI startup fast
     import pandas as pd
 
+    from quantlab.ml_models.dataset import MLDataset
+    from quantlab.ml_models.validation import Splitter
+
 app = typer.Typer(help="QuantLab — quantitative research platform for Indian equities.")
 
 log = structlog.get_logger(__name__)
@@ -1040,6 +1043,354 @@ def research_prereg_cmd(
     failed = not report.ok or any(i.severity == "error" for i in issues)
     if validate_only and failed:
         raise typer.Exit(code=1)
+
+
+ml_app = typer.Typer(help="Machine learning under purged validation (PRD Module 11).")
+app.add_typer(ml_app, name="ml")
+
+
+def _load_ml_dataset(
+    universe: str,
+    *,
+    features: str | None,
+    start: date | None,
+    end: date | None,
+    target: str,
+    horizon: int,
+) -> MLDataset:
+    """Assemble a dataset from the feature parquet, prices, and index membership.
+
+    Kept in one place so ``train``, ``search`` and ``folds`` all build the dataset
+    identically — three subtly different loaders would make their numbers
+    incomparable.
+    """
+
+    import pandas as pd
+
+    from quantlab.db.session import create_db_engine, create_session_factory
+    from quantlab.feature_engineering.build import (
+        load_ohlcv_panel,
+        read_feature_panel,
+        universe_by_date,
+    )
+    from quantlab.ml_models.dataset import TargetKind, TargetSpec, build_dataset
+
+    engine = create_db_engine()
+    session = create_session_factory(engine)()
+    try:
+        prices = load_ohlcv_panel(session, universe, start=start, end=end)
+        if prices.empty:
+            raise typer.BadParameter(
+                f"no OHLCV rows for any member of {universe}. Ingest data and "
+                "build the universe first."
+            )
+        panel = read_feature_panel(start=start, end=end)
+        if panel.empty:
+            raise typer.BadParameter(
+                "the feature dataset is empty. Build it first: "
+                f"quantlab features build --index {universe}"
+            )
+        merged = panel.merge(
+            prices[["date", "security_id", "adj_close"]],
+            on=["date", "security_id"],
+            how="inner",
+        )
+        dates = sorted({d.date() for d in pd.to_datetime(merged["date"])})
+        members = universe_by_date(session, universe, dates)
+    finally:
+        session.close()
+
+    reserved = {"date", "security_id", "adj_close", "year"}
+    names = (
+        [f.strip() for f in features.split(",") if f.strip()]
+        if features
+        else [c for c in merged.columns if c not in reserved]
+    )
+    spec = TargetSpec(kind=TargetKind(target), horizon=horizon)
+    return build_dataset(
+        merged,
+        features=names,
+        universe=members,
+        index_name=universe,
+        target=spec,
+    )
+
+
+def _build_splitter(
+    kind: str, *, n_splits: int, embargo: int, train_days: int | None
+) -> Splitter:
+    from quantlab.ml_models.validation import PurgedKFold, WalkForward
+
+    if kind == "purged-kfold":
+        return PurgedKFold(n_splits=n_splits, embargo_days=embargo)
+    if kind == "walk-forward-expanding":
+        return WalkForward(mode="expanding", n_splits=n_splits, gap_days=embargo)
+    if kind == "walk-forward-rolling":
+        if train_days is None:
+            raise typer.BadParameter(
+                "--train-days is required for a rolling walk-forward: the whole "
+                "difference from the expanding variant is a fixed window length"
+            )
+        return WalkForward(
+            mode="rolling",
+            n_splits=n_splits,
+            train_days=train_days,
+            gap_days=embargo,
+        )
+    raise typer.BadParameter(
+        f"unknown validation scheme {kind!r}: expected purged-kfold, "
+        "walk-forward-expanding or walk-forward-rolling"
+    )
+
+
+def _split_for_selection(dataset: MLDataset) -> tuple[MLDataset, MLDataset | None]:
+    """``(train, validation)`` when the range covers both, else ``(dataset, None)``.
+
+    Model selection belongs on the validation split (``CLAUDE.md`` §3). When the
+    requested range does not reach 2022 there is nothing to select on, and the
+    caller falls back to the purged-CV score — which the report states rather
+    than presenting a CV number as though it were a held-back one.
+    """
+
+    from quantlab.config import Split
+
+    train_mask = dataset.split_mask(Split.TRAIN)
+    validation_mask = dataset.split_mask(Split.VALIDATION)
+    if not train_mask.any():
+        return dataset, None
+    if not validation_mask.any():
+        return dataset.subset(train_mask), None
+    return dataset.subset(train_mask), dataset.subset(validation_mask)
+
+
+@ml_app.command("models")
+def ml_models_cmd() -> None:
+    """List the permitted model families and their declared search spaces."""
+
+    from quantlab.ml_models.models import DEFAULT_SEARCH_SPACE, MODEL_FAMILIES
+
+    typer.echo("Permitted model families (PRD Module 11):")
+    for family in sorted(MODEL_FAMILIES):
+        grid = DEFAULT_SEARCH_SPACE.get(family, {})
+        size = 1
+        for values in grid.values():
+            size *= len(values)
+        typer.echo(f"  {family:16s} default grid: {size} configuration(s)")
+        for axis, values in sorted(grid.items()):
+            typer.echo(f"      {axis}: {list(values)}")
+    typer.echo("")
+    typer.echo(
+        "Deep sequence models (LSTM, GRU, Transformer) are a deliberate scope cut "
+        "(CLAUDE.md §4) and cannot be built."
+    )
+
+
+@ml_app.command("folds")
+def ml_folds(
+    universe: str = typer.Option("NIFTY500", "--universe", help="Index to use."),
+    start: str = typer.Option(None, "--start", help="Inclusive start (YYYY-MM-DD)."),
+    end: str = typer.Option(None, "--end", help="Inclusive end (YYYY-MM-DD)."),
+    validation: str = typer.Option(
+        "purged-kfold",
+        "--validation",
+        help="purged-kfold | walk-forward-expanding | walk-forward-rolling",
+    ),
+    n_splits: int = typer.Option(5, "--n-splits", help="Number of folds."),
+    embargo: int = typer.Option(
+        10, "--embargo", help="Embargo (or walk-forward gap) in trading days."
+    ),
+    train_days: int = typer.Option(
+        None, "--train-days", help="Rolling training window length."
+    ),
+    horizon: int = typer.Option(1, "--horizon", help="Target horizon in days."),
+) -> None:
+    """Show the fold structure and how much each fold purged.
+
+    Run this before trusting any result: a purged CV that removed nothing has
+    protected nothing, and the counts are how that becomes visible.
+
+    Example::
+
+        quantlab ml folds --universe NIFTY500 --validation purged-kfold --embargo 10
+    """
+
+    from quantlab.ml_models.validation import render_folds
+
+    dataset = _load_ml_dataset(
+        universe,
+        features=None,
+        start=_parse_date(start) if start else None,
+        end=_parse_date(end) if end else None,
+        target="return",
+        horizon=horizon,
+    )
+    splitter = _build_splitter(
+        validation, n_splits=n_splits, embargo=embargo, train_days=train_days
+    )
+    typer.echo(dataset.describe())
+    typer.echo(splitter.describe())
+    typer.echo("")
+    typer.echo(render_folds(splitter.split(dataset.times)))
+
+
+@ml_app.command("train")
+def ml_train(
+    universe: str = typer.Option("NIFTY500", "--universe", help="Index to use."),
+    model: str = typer.Option(
+        "ridge", "--model", help="ridge | lasso | random_forest | xgboost | lightgbm"
+    ),
+    target: str = typer.Option(
+        "return", "--target", help="return (regression) | direction (classification)"
+    ),
+    horizon: int = typer.Option(1, "--horizon", help="Target horizon in days."),
+    features: str = typer.Option(
+        None, "--features", help="Comma-separated features. Defaults to all."
+    ),
+    start: str = typer.Option(None, "--start", help="Inclusive start (YYYY-MM-DD)."),
+    end: str = typer.Option(None, "--end", help="Inclusive end (YYYY-MM-DD)."),
+    validation: str = typer.Option(
+        "purged-kfold",
+        "--validation",
+        help="purged-kfold | walk-forward-expanding | walk-forward-rolling",
+    ),
+    n_splits: int = typer.Option(5, "--n-splits", help="Number of folds."),
+    embargo: int = typer.Option(10, "--embargo", help="Embargo in trading days."),
+    train_days: int = typer.Option(
+        None, "--train-days", help="Rolling training window length."
+    ),
+    gross: bool = typer.Option(
+        False, "--gross", help="Report gross of costs as well as net."
+    ),
+    shap: bool = typer.Option(False, "--shap", help="Compute SHAP attribution."),
+    hypothesis: str = typer.Option(
+        None, "--hypothesis", help="Pre-registered hypothesis id (docs/hypotheses.md)."
+    ),
+) -> None:
+    """Evaluate one model configuration, against both required baselines.
+
+    Writes a ``research_log`` row and counts toward the trials total, whatever the
+    result. Selection uses the validation split when the date range covers it.
+
+    Example::
+
+        quantlab ml train --universe NIFTY500 --model lightgbm --target direction \
+            --validation walk-forward-expanding --embargo 10
+    """
+
+    from quantlab.db.session import create_db_engine, create_session_factory
+    from quantlab.ml_models.evaluate import evaluate_model
+    from quantlab.ml_models.models import ModelSpec, Task
+    from quantlab.ml_models.trading import TradingRule
+    from quantlab.research.log import ResearchLog
+
+    dataset = _load_ml_dataset(
+        universe,
+        features=features,
+        start=_parse_date(start) if start else None,
+        end=_parse_date(end) if end else None,
+        target=target,
+        horizon=horizon,
+    )
+    splitter = _build_splitter(
+        validation, n_splits=n_splits, embargo=embargo, train_days=train_days
+    )
+    train, held_back = _split_for_selection(dataset)
+
+    spec = ModelSpec(
+        family=model,
+        task=Task.REGRESSION if target == "return" else Task.CLASSIFICATION,
+    )
+    rule = TradingRule(cost_per_unit_traded=0.0 if gross else None)
+
+    session = create_session_factory(create_db_engine())()
+    try:
+        research_log = ResearchLog(session)
+        evaluation = evaluate_model(
+            research_log,
+            train,
+            spec,
+            splitter=splitter,
+            rule=rule,
+            validation=held_back,
+            hypothesis_id=hypothesis,
+            compute_shap=shap,
+        )
+        typer.echo(evaluation.render(research_log))
+    finally:
+        session.close()
+
+
+@ml_app.command("search")
+def ml_search(
+    universe: str = typer.Option("NIFTY500", "--universe", help="Index to use."),
+    families: str = typer.Option(
+        None,
+        "--families",
+        help="Comma-separated model families. Defaults to all five.",
+    ),
+    target: str = typer.Option(
+        "return", "--target", help="return (regression) | direction (classification)"
+    ),
+    horizon: int = typer.Option(1, "--horizon", help="Target horizon in days."),
+    features: str = typer.Option(
+        None, "--features", help="Comma-separated features. Defaults to all."
+    ),
+    start: str = typer.Option(None, "--start", help="Inclusive start (YYYY-MM-DD)."),
+    end: str = typer.Option(None, "--end", help="Inclusive end (YYYY-MM-DD)."),
+    validation: str = typer.Option(
+        "purged-kfold",
+        "--validation",
+        help="purged-kfold | walk-forward-expanding | walk-forward-rolling",
+    ),
+    n_splits: int = typer.Option(5, "--n-splits", help="Number of folds."),
+    embargo: int = typer.Option(10, "--embargo", help="Embargo in trading days."),
+    train_days: int = typer.Option(
+        None, "--train-days", help="Rolling training window length."
+    ),
+    top: int = typer.Option(10, "--top", help="Configurations to list."),
+) -> None:
+    """Search the declared hyper-parameter grids, logging every configuration.
+
+    The report leads with the search space and the iteration count, because a
+    winning score means nothing without the number of attempts behind it.
+
+    Example::
+
+        quantlab ml search --universe NIFTY500 --families xgboost,lightgbm \
+            --target direction
+    """
+
+    from quantlab.db.session import create_db_engine, create_session_factory
+    from quantlab.ml_models.search import run_search
+    from quantlab.research.log import ResearchLog
+
+    dataset = _load_ml_dataset(
+        universe,
+        features=features,
+        start=_parse_date(start) if start else None,
+        end=_parse_date(end) if end else None,
+        target=target,
+        horizon=horizon,
+    )
+    splitter = _build_splitter(
+        validation, n_splits=n_splits, embargo=embargo, train_days=train_days
+    )
+    train, held_back = _split_for_selection(dataset)
+    chosen = [f.strip() for f in families.split(",")] if families else None
+
+    session = create_session_factory(create_db_engine())()
+    try:
+        research_log = ResearchLog(session)
+        result = run_search(
+            research_log,
+            train,
+            families=chosen,
+            splitter=splitter,
+            validation=held_back,
+        )
+        typer.echo(result.render(research_log, top=top))
+    finally:
+        session.close()
 
 
 def main() -> None:

@@ -136,6 +136,13 @@ ignore_missing_imports = true
 module = ["joblib.*", "pyarrow.*"]
 ignore_missing_imports = true
 
+# XGBoost, LightGBM and SHAP ship no py.typed marker. All three are imported
+# lazily inside quantlab.ml_models (PRD Module 11) and nowhere else, so the
+# untyped surface is confined to the model registry and the SHAP explainer.
+[[tool.mypy.overrides]]
+module = ["xgboost.*", "lightgbm.*", "shap.*"]
+ignore_missing_imports = true
+
 # statsmodels and scipy ship no py.typed marker; they are wrapped by the stats,
 # factors and research modules (PRD Modules 5, 6 and §4.4).
 [[tool.mypy.overrides]]
