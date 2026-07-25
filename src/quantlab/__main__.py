@@ -584,6 +584,257 @@ def backtest_cost_sensitivity(
     )
 
 
+risk_app = typer.Typer(
+    help="Risk analytics: VaR, stress testing, exposure (PRD Module 9)."
+)
+app.add_typer(risk_app, name="risk")
+
+
+@risk_app.command("stress-plan")
+def risk_stress_plan(
+    padding: int = typer.Option(
+        30, "--padding", help="Calendar days of padding either side."
+    ),
+) -> None:
+    """Print the date ranges to ingest so every stress window can be replayed.
+
+    These ranges are retained regardless of any backtest window. The GFC starts in
+    2007, seven years before ``DATA_START``, so ordinary ingestion never fetches it.
+    """
+
+    from quantlab.risk.stress import stress_window_ingest_plan
+
+    typer.echo(stress_window_ingest_plan(padding_days=padding).render())
+
+
+@risk_app.command("stress-coverage")
+def risk_stress_coverage() -> None:
+    """Report which stress windows have ingested data.
+
+    Run this before trusting a stress test.
+    """
+
+    from quantlab.db.session import create_db_engine, create_session_factory
+    from quantlab.risk.stress import stress_coverage
+
+    engine = create_db_engine()
+    session = create_session_factory(engine)()
+    try:
+        coverages = stress_coverage(session)
+    finally:
+        session.close()
+
+    typer.echo("Stress window coverage:")
+    for coverage in coverages:
+        typer.echo(coverage.render())
+    missing = [c.window.slug for c in coverages if not c.available]
+    if missing:
+        typer.echo("")
+        typer.echo(
+            f"{len(missing)} of {len(coverages)} windows have no data: "
+            f"{', '.join(missing)}. Stress testing will refuse to run on them rather "
+            "than substitute a synthetic shock — see 'quantlab risk stress-plan'."
+        )
+
+
+@risk_app.command("stress")
+def risk_stress(
+    universe: str = typer.Option(
+        None, "--universe", help="Equal-weight the point-in-time members of this index."
+    ),
+    as_of: str = typer.Option(
+        None, "--as-of", help="Membership date for --universe (YYYY-MM-DD)."
+    ),
+) -> None:
+    """Replay a portfolio through every stress window that has real ingested data.
+
+    Windows without data are reported as untested, never quietly skipped.
+    """
+
+    from quantlab.db.session import create_db_engine, create_session_factory
+    from quantlab.risk.stress import stress_test
+
+    engine = create_db_engine()
+    session = create_session_factory(engine)()
+    try:
+        weights = None
+        if universe:
+            from quantlab.universe.membership import universe_as_of
+
+            when = _parse_date(as_of) if as_of else date.today()
+            members = sorted(universe_as_of(session, universe, when))
+            if not members:
+                raise typer.BadParameter(
+                    f"{universe} has no point-in-time members as of {when}"
+                )
+            weights = dict.fromkeys(members, 1.0 / len(members))
+            typer.echo(
+                f"Equal-weighting {len(members)} members of {universe} @ {when}."
+            )
+        report = stress_test(session, weights=weights)
+    finally:
+        session.close()
+
+    typer.echo("")
+    typer.echo(report.render())
+    if not report.complete:
+        raise typer.Exit(code=1)
+
+
+@risk_app.command("var")
+def risk_var(
+    universe: str = typer.Option("NIFTY500", "--universe", help="Index to analyse."),
+    as_of: str = typer.Option(None, "--as-of", help="Point-in-time date (YYYY-MM-DD)."),
+    lookback: int = typer.Option(
+        504, "--lookback", help="Trading days of history to estimate from."
+    ),
+) -> None:
+    """VaR and Expected Shortfall for an equal-weighted point-in-time universe.
+
+    All three estimators are shown, because their disagreement is the information: a
+    Gaussian VaR materially below the other two means the portfolio's tail is worse
+    than a normal approximation admits.
+
+    Example::
+
+        quantlab risk var --universe NIFTY500 --as-of 2021-12-31
+    """
+
+    from quantlab.risk.var import var_comparison
+
+    when = _parse_date(as_of) if as_of else date.today()
+    bars, description = _load_bars(universe, None, when)
+    typer.echo(f"Loaded {description}.")
+
+    wide = bars.pivot(
+        index="date", columns="security_id", values="adj_close"
+    ).sort_index()
+    returns = wide.pct_change().dropna(how="all").tail(lookback)
+    portfolio = returns.mean(axis=1).dropna()
+    if len(portfolio) < 30:
+        raise typer.BadParameter(
+            f"only {len(portfolio)} usable return observations; VaR needs at least 30"
+        )
+
+    typer.echo(
+        f"Equal-weighted across {returns.shape[1]} securities, "
+        f"{len(portfolio)} days to {when}."
+    )
+    typer.echo("")
+    typer.echo(var_comparison(portfolio).render())
+
+
+portfolio_app = typer.Typer(help="Portfolio optimisation (PRD Module 10).")
+app.add_typer(portfolio_app, name="portfolio")
+
+
+@portfolio_app.command("optimise")
+def portfolio_optimise(
+    universe: str = typer.Option(
+        "NIFTY500", "--universe", help="Index to optimise over."
+    ),
+    method: str = typer.Option(
+        "minimum_variance",
+        "--method",
+        help=(
+            "equal_weight | inverse_volatility | risk_parity | minimum_variance | "
+            "maximum_sharpe"
+        ),
+    ),
+    as_of: str = typer.Option(None, "--as-of", help="Point-in-time date (YYYY-MM-DD)."),
+    lookback: int = typer.Option(
+        252, "--lookback", help="Trading days of history to use."
+    ),
+    covariance: str = typer.Option(
+        "ledoit_wolf",
+        "--covariance",
+        help="sample | ledoit_wolf | constant_correlation. Shrunk by default.",
+    ),
+    max_weight: float = typer.Option(0.10, "--max-weight", help="Per-position cap."),
+) -> None:
+    """Optimise weights over the point-in-time universe.
+
+    Example::
+
+        quantlab portfolio optimise --universe NIFTY500 --method risk_parity \
+            --as-of 2021-12-31
+    """
+
+    from quantlab.portfolio.covariance import estimate_covariance
+    from quantlab.portfolio.optimisers import (
+        PortfolioConstraints,
+        equal_weight,
+        inverse_volatility,
+        maximum_sharpe,
+        minimum_variance,
+        risk_parity,
+    )
+
+    when = _parse_date(as_of) if as_of else date.today()
+    bars, description = _load_bars(universe, None, when)
+    typer.echo(f"Loaded {description}.")
+
+    import pandas as pd
+
+    wide = bars.pivot(
+        index="date", columns="security_id", values="adj_close"
+    ).sort_index()
+    returns = wide.pct_change().dropna(how="all").tail(lookback)
+    returns = returns.dropna(axis=1, thresh=max(20, lookback // 2))
+    if returns.shape[1] < 2:
+        raise typer.BadParameter(
+            f"only {returns.shape[1]} securities have enough history in the last "
+            f"{lookback} days"
+        )
+    typer.echo(f"Optimising over {returns.shape[1]} securities, {len(returns)} days.")
+
+    estimate = estimate_covariance(returns, method=covariance)  # type: ignore[arg-type]
+    typer.echo("")
+    typer.echo(estimate.render())
+
+    constraints = PortfolioConstraints(max_weight=max_weight)
+    if method == "equal_weight":
+        result = equal_weight(returns.columns, covariance=estimate)
+    elif method == "inverse_volatility":
+        result = inverse_volatility(estimate, constraints=constraints)
+    elif method == "risk_parity":
+        result = risk_parity(estimate, max_weight=max_weight)
+    elif method == "minimum_variance":
+        result = minimum_variance(estimate, constraints=constraints)
+    elif method == "maximum_sharpe":
+        result = maximum_sharpe(returns.mean(), estimate, constraints=constraints)
+    else:
+        raise typer.BadParameter(f"unknown method {method!r}")
+
+    typer.echo("")
+    typer.echo(result.render())
+    assert isinstance(returns, pd.DataFrame)
+
+
+@portfolio_app.command("rebalance")
+def portfolio_rebalance(
+    universe: str = typer.Option("NIFTY500", "--universe", help="Index to rebalance."),
+    as_of: str = typer.Option(..., "--as-of", help="Rebalance date (YYYY-MM-DD)."),
+) -> None:
+    """Show the rebalance plan against the point-in-time universe.
+
+    Securities that have left the index are exited explicitly and reported — the
+    point being that they are never held silently.
+    """
+
+    from quantlab.db.session import create_db_engine, create_session_factory
+    from quantlab.portfolio.rebalance import rebalance_plan
+
+    when = _parse_date(as_of)
+    engine = create_db_engine()
+    session = create_session_factory(engine)()
+    try:
+        plan = rebalance_plan(session, universe, when)
+    finally:
+        session.close()
+    typer.echo(plan.render())
+
+
 research_app = typer.Typer(
     help="Research integrity: the log, multiple-testing corrections, pre-registration."
 )

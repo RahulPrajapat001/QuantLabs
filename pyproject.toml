@@ -94,11 +94,15 @@ extend-exclude = [
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM", "TID", "RUF"]
-# The research-integrity modules quote Bailey & López de Prado's notation
-# directly (γ3 for skew, γ4 for kurtosis) and parse en dashes in the
-# pre-registration document's headings. The cost models write their statutory
-# arithmetic out longhand (0.1% × turnover). All deliberate, none typos.
-allowed-confusables = ["γ", "–", "×", "→"]
+# Quantitative finance has standard notation and this codebase uses it: γ3/γ4 for
+# skew and kurtosis (Bailey & López de Prado), ρ/σ/μ for correlation, volatility and
+# mean, α/β for alpha and beta, Σ for the covariance matrix, δ/λ for shrinkage and
+# penalty coefficients. Also en dashes in the pre-registration parser and × in the
+# cost models' longhand arithmetic. All deliberate, none typos.
+allowed-confusables = [
+    "γ", "ρ", "σ", "μ", "α", "β", "δ", "λ", "φ", "ω", "Σ", "Φ",
+    "–", "×", "→", "≈", "≥", "≤",
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["quantlab"]
@@ -135,7 +139,17 @@ ignore_missing_imports = true
 # statsmodels and scipy ship no py.typed marker; they are wrapped by the stats,
 # factors and research modules (PRD Modules 5, 6 and §4.4).
 [[tool.mypy.overrides]]
-module = ["statsmodels.*", "scipy.*"]
+module = ["statsmodels.*", "scipy.*", "sklearn.*"]
+ignore_missing_imports = true
+
+# cvxpy ships py.typed but its declared surface is incomplete: quad_form, psd_wrap,
+# norm1, sum and log all exist at runtime and are absent from the type information,
+# so analysing it produces false attr-defined errors on correct code. Skipping the
+# import treats cvxpy as untyped, which is honest about what it actually provides.
+# It is confined to quantlab.portfolio.optimisers.
+[[tool.mypy.overrides]]
+module = ["cvxpy.*"]
+follow_imports = "skip"
 ignore_missing_imports = true
 
 # --- pytest ------------------------------------------------------------------
