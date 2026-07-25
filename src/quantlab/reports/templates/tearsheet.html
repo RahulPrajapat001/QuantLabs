@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <title>{{ data.strategy_name }} — QuantLab tearsheet</title>
+  <style>{{ stylesheet }}</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div>
+    <h1>{{ data.strategy_name }}</h1>
+    <p class="sub">
+      {{ data.window[0] | isodate }} → {{ data.window[1] | isodate }}
+      · run <span class="ql-num">{{ data.run_id[:12] }}</span>
+    </p>
+  </div>
+  <div class="badges">
+    {% for part in data.split_parts %}
+      <span class="badge badge-{{ part }}">{{ part | upper }}</span>
+    {% endfor %}
+    {% if data.exploratory %}
+      <span class="badge badge-exploratory">EXPLORATORY</span>
+    {% else %}
+      <span class="badge badge-prereg">PRE-REGISTERED {{ data.hypothesis_id }}</span>
+    {% endif %}
+    {% if not data.costs_realistic %}
+      <span class="badge badge-warn">⚠ {{ sharpe.cost_model }}</span>
+    {% endif %}
+  </div>
+</header>
+
+{# The Sharpe, its trials count and its deflated value are one block. They are
+   not separable by a layout change, a screenshot or a crop. #}
+<section class="sharpe" {% if not sharpe.significant %}data-not-significant="true"{% endif %}>
+  <div class="sharpe-primary">
+    <span class="label">Sharpe ratio</span>
+    <span class="value ql-num">{{ "%.2f" | format(sharpe.value) }}</span>
+  </div>
+  <div class="sharpe-context">
+    <div><span class="label">Trials</span>
+      <span class="ql-num">{{ "{:,}".format(sharpe.trials) }}</span></div>
+    <div><span class="label">Deflated</span>
+      <span class="ql-num">{{ "%.3f" | format(sharpe.deflated_sharpe) }}</span></div>
+    <div><span class="label">E[max] under null</span>
+      <span class="ql-num">{{ "%.2f" | format(sharpe.expected_max_sharpe) }}</span></div>
+    {% if sharpe.pbo is not none %}
+    <div><span class="label">PBO</span>
+      <span class="ql-num">{{ "%.2f" | format(sharpe.pbo) }}</span></div>
+    {% endif %}
+    <div><span class="label">Observations</span>
+      <span class="ql-num">{{ "{:,}".format(sharpe.n_periods) }}</span></div>
+  </div>
+  <p class="verdict">
+    {% if sharpe.significant %}
+      The deflated Sharpe clears the 95% threshold: the true Sharpe exceeds zero
+      with at least 95% probability after correcting for {{ sharpe.trials }} trial(s).
+    {% else %}
+      <strong>Not significant after deflation.</strong> Corrected for
+      {{ sharpe.trials }} trial(s), this result is consistent with noise from the
+      search that produced it. The undeflated figure above should not be reported
+      on its own.
+    {% endif %}
+  </p>
+</section>
+
+<section>
+  <h2>Performance</h2>
+  <table class="metrics">
+    <tbody>
+    {% for label, value in data.performance_rows %}
+      <tr><th>{{ label }}</th><td class="ql-num">{{ value }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if data.charts %}
+<section class="charts">
+  <h2>Charts</h2>
+  {% for title, svg in data.charts %}
+    <figure>
+      <figcaption>{{ title }}</figcaption>
+      {{ svg | safe }}
+    </figure>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section>
+  <h2>Risk</h2>
+  <table class="metrics">
+    <tbody>
+    {% for label, value in data.risk_rows %}
+      <tr><th>{{ label }}</th><td class="ql-num">{{ value }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Trades</h2>
+  <table class="metrics">
+    <tbody>
+    {% for label, value in data.trade_rows %}
+      <tr><th>{{ label }}</th><td class="ql-num">{{ value }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="summary">
+  <h2>Summary</h2>
+  <p>{{ sharpe.render() }}</p>
+  {% if data.holdout_touched %}
+    <p class="alert">
+      <strong>This run touched holdout data.</strong> The holdout is evaluated
+      exactly once, at the end of the project. If this is not that evaluation,
+      the result must not inform any strategy, parameter or feature decision.
+    </p>
+  {% endif %}
+  {% if not data.costs_realistic %}
+    <p class="alert">
+      <strong>Costs are not realistic.</strong> This run used
+      <span class="ql-num">{{ sharpe.cost_model }}</span>. Nothing on this page is
+      a tradeable result.
+    </p>
+  {% endif %}
+  {% for note in data.notes %}
+    <p>{{ note }}</p>
+  {% endfor %}
+</section>
+
+{# ---------------------------------------------------------------------------
+   MANDATORY. PRD Module 15 requires this page on every tearsheet, and
+   render_html() refuses to produce a document without it. Do not wrap it in a
+   conditional.
+   --------------------------------------------------------------------------- #}
+<section class="methodology">
+  <h2>Methodology</h2>
+
+  <h3>Universe construction</h3>
+  <p>{{ methodology.universe_construction }}</p>
+
+  <h3>Cost model</h3>
+  <p>{{ methodology.cost_model }}</p>
+
+  <h3>Data splits</h3>
+  <p>{{ methodology.splits }}</p>
+
+  <h3>Trials</h3>
+  <p>{{ methodology.trials }}</p>
+
+  <h3>Limitations</h3>
+  <ul>
+    {% for limitation in methodology.limitations %}
+      <li>{{ limitation }}</li>
+    {% endfor %}
+  </ul>
+
+  <p class="provenance">
+    Generated {{ data.generated_at.strftime("%Y-%m-%d %H:%M") }} UTC from
+    research_log run <span class="ql-num">{{ data.run_id }}</span>. Every figure
+    on this tearsheet is traceable to that row.
+  </p>
+</section>
+
+</body>
+</html>

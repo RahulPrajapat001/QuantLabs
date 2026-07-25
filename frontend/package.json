@@ -1,0 +1,14 @@
+{
+  "name": "quantlab-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "QuantLab product UI. The API client in src/lib/api is generated from the FastAPI OpenAPI schema.",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "generate:api": "python ../scripts/generate_api_client.py"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.6.0"
+  }
+}

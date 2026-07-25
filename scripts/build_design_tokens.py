@@ -37,6 +37,9 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = REPO_ROOT / "config"
+#: The PDF tearsheet's stylesheet ships inside the package, so an installed
+#: wheel can render a report without the repo's config/ directory beside it.
+TEMPLATE_DIR = REPO_ROOT / "src" / "quantlab" / "reports" / "templates"
 
 GENERATED_BY = "scripts/build_design_tokens.py"
 DO_NOT_EDIT_LINES = (
@@ -549,6 +552,225 @@ def build_plotly(mode: Mode) -> dict[str, Any]:
     }
 
 
+def build_print_css() -> str:
+    """The PDF tearsheet's stylesheet (PRD Module 15).
+
+    Generated from the same tokens as the screen artifacts, so a colour the
+    design system does not define cannot appear in a printed report either.
+    Always light: a tearsheet is printed on paper, and a dark PDF wastes toner
+    and reads badly under an office photocopier.
+    """
+
+    n = LIGHT.neutral
+    s = LIGHT.semantic
+    badge = {name: (n | s)[token] for name, token in SPLIT_BADGES.items()}
+    body, leading = TYPE_SCALE["base"]
+    small, small_leading = TYPE_SCALE["sm"]
+    tiny, tiny_leading = TYPE_SCALE["xs"]
+
+    return f"""/* QuantLab PDF tearsheet.
+{chr(10).join(f" * {line}" for line in DO_NOT_EDIT_LINES)}
+ *
+ * Generated from the same token source as config/design-tokens.css, so the
+ * printed report, the Next.js UI and the Streamlit dashboard cannot disagree
+ * about what "negative" looks like.
+ */
+
+@page {{
+  size: A4;
+  margin: 16mm 14mm 18mm 14mm;
+  @bottom-right {{
+    content: "Page " counter(page) " of " counter(pages);
+    font-family: {FONT_MONO};
+    font-size: {tiny};
+    color: {n["text-muted"]};
+  }}
+  @bottom-left {{
+    content: "QuantLab — not investment advice";
+    font-family: {FONT_SANS};
+    font-size: {tiny};
+    color: {n["text-muted"]};
+  }}
+}}
+
+* {{ box-sizing: border-box; }}
+
+body {{
+  font-family: {FONT_SANS};
+  font-size: {body};
+  line-height: {leading};
+  color: {n["text-primary"]};
+  background: {n["surface"]};
+  margin: 0;
+}}
+
+/* Every number is monospace with tabular figures, exactly as on screen. */
+.ql-num {{
+  font-family: {FONT_MONO};
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}}
+
+h1 {{
+  font-size: {TYPE_SCALE["xl"][0]};
+  line-height: {TYPE_SCALE["xl"][1]};
+  margin: 0;
+}}
+h2 {{
+  font-size: {TYPE_SCALE["md"][0]};
+  line-height: {TYPE_SCALE["md"][1]};
+  margin: {SPACING["5"]} 0 {SPACING["2"]};
+  padding-bottom: {SPACING["1"]};
+  border-bottom: 1px solid {n["border"]};
+}}
+h3 {{
+  font-size: {small};
+  line-height: {small_leading};
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: {n["text-secondary"]};
+  margin: {SPACING["4"]} 0 {SPACING["1"]};
+}}
+p {{ margin: 0 0 {SPACING["2"]}; }}
+
+.masthead {{
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid {n["text-primary"]};
+  padding-bottom: {SPACING["2"]};
+}}
+.masthead .sub {{
+  font-size: {small};
+  color: {n["text-secondary"]};
+  margin: {SPACING["1"]} 0 0;
+}}
+
+.badges {{ text-align: right; }}
+.badge {{
+  display: inline-block;
+  font-size: {tiny};
+  line-height: {tiny_leading};
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 2px {SPACING["1"]};
+  margin-left: {SPACING["1"]};
+  border: 1px solid currentColor;
+  border-radius: {DIMENSIONS["radius"]};
+}}
+.badge-train {{ color: {badge["train"]}; }}
+.badge-validation {{ color: {badge["validation"]}; }}
+/* Holdout is filled — the only filled badge in the system. */
+.badge-holdout {{
+  color: {n["surface"]};
+  background: {badge["holdout"]};
+  border-color: {badge["holdout"]};
+}}
+.badge-pre-sample {{ color: {badge["pre-sample"]}; }}
+.badge-prereg {{ color: {n["text-primary"]}; }}
+.badge-exploratory {{ color: {n["text-muted"]}; border-style: dashed; }}
+.badge-warn {{ color: {s["warning"]}; }}
+
+/* The Sharpe block. Value, trials and deflated value are one unit. */
+.sharpe {{
+  margin-top: {SPACING["4"]};
+  padding: {SPACING["3"]};
+  border: 1px solid {n["border-strong"]};
+  border-radius: {DIMENSIONS["radius"]};
+  break-inside: avoid;
+}}
+.sharpe[data-not-significant="true"] {{ border-color: {s["warning"]}; }}
+.sharpe-primary .label {{
+  display: block;
+  font-size: {tiny};
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: {n["text-secondary"]};
+}}
+.sharpe-primary .value {{
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: 600;
+}}
+.sharpe-context {{
+  display: flex;
+  gap: {SPACING["5"]};
+  margin-top: {SPACING["2"]};
+  padding-top: {SPACING["2"]};
+  border-top: 1px solid {n["border"]};
+}}
+.sharpe-context .label {{
+  display: block;
+  font-size: {tiny};
+  color: {n["text-secondary"]};
+}}
+.verdict {{
+  margin: {SPACING["2"]} 0 0;
+  font-size: {small};
+  line-height: {small_leading};
+  color: {n["text-secondary"]};
+}}
+
+table.metrics {{
+  width: 100%;
+  border-collapse: collapse;
+  font-size: {small};
+  line-height: {small_leading};
+}}
+table.metrics tr {{ border-bottom: 1px solid {n["border"]}; }}
+table.metrics th {{
+  text-align: left;
+  font-weight: 400;
+  color: {n["text-secondary"]};
+  padding: {SPACING["1"]} 0;
+}}
+table.metrics td {{
+  text-align: right;
+  padding: {SPACING["1"]} 0;
+  color: {n["text-primary"]};
+}}
+
+figure {{ margin: 0 0 {SPACING["4"]}; break-inside: avoid; }}
+figcaption {{
+  font-size: {tiny};
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: {n["text-secondary"]};
+  margin-bottom: {SPACING["1"]};
+}}
+figure svg {{ width: 100%; height: auto; }}
+
+.alert {{
+  border-left: 3px solid {s["warning"]};
+  padding-left: {SPACING["2"]};
+  font-size: {small};
+  line-height: {small_leading};
+}}
+
+/* The methodology page is mandatory and always starts a fresh page, so it
+   cannot be reduced to a footnote at the bottom of the trades table. */
+.methodology {{
+  break-before: page;
+  page-break-before: always;
+}}
+.methodology ul {{
+  margin: 0;
+  padding-left: {SPACING["4"]};
+  font-size: {small};
+  line-height: {small_leading};
+}}
+.methodology li {{ margin-bottom: {SPACING["1"]}; }}
+.methodology p {{ font-size: {small}; line-height: {small_leading}; }}
+.provenance {{
+  margin-top: {SPACING["5"]};
+  padding-top: {SPACING["2"]};
+  border-top: 1px solid {n["border"]};
+  color: {n["text-muted"]};
+  font-size: {tiny};
+}}
+"""
+
+
 # --- Build --------------------------------------------------------------------
 
 
@@ -564,6 +786,9 @@ def artifacts() -> dict[Path, str]:
             build_plotly(LIGHT), indent=2
         )
         + "\n",
+        # Ships inside the package: an installed wheel renders a tearsheet
+        # without needing the repo's config/ directory beside it.
+        TEMPLATE_DIR / "tearsheet.css": build_print_css(),
     }
 
 

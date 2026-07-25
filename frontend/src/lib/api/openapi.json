@@ -1,0 +1,3922 @@
+{
+  "components": {
+    "schemas": {
+      "BacktestRequest": {
+        "properties": {
+          "cost_model": {
+            "default": "IndianEquityCostModel",
+            "description": "ZeroCostModel | GenericBpsModel | IndianEquityCostModel.",
+            "title": "Cost Model",
+            "type": "string"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "hypothesis_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pre-registered hypothesis id. Omitted, the run is logged exploratory \u2014 legitimate, but labelled.",
+            "title": "Hypothesis Id"
+          },
+          "index_name": {
+            "default": "NIFTY500",
+            "title": "Index Name",
+            "type": "string"
+          },
+          "initial_capital": {
+            "default": 1000000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Initial Capital",
+            "type": "number"
+          },
+          "max_position_weight": {
+            "default": 0.15,
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Max Position Weight",
+            "type": "number"
+          },
+          "max_positions": {
+            "default": 10,
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Max Positions",
+            "type": "integer"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "strategy": {
+            "title": "Strategy",
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategy"
+        ],
+        "title": "BacktestRequest",
+        "type": "object"
+      },
+      "BacktestResult": {
+        "description": "A completed backtest. The Sharpe is an object; there is no bare float.",
+        "properties": {
+          "annual_return": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "annual_volatility": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "badge": {
+            "$ref": "#/components/schemas/SplitBadge"
+          },
+          "benchmark_sharpe": {
+            "$ref": "#/components/schemas/ReferenceRatio"
+          },
+          "calmar": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "cost_attribution": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Num"
+            },
+            "title": "Cost Attribution",
+            "type": "object"
+          },
+          "cost_drag": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "costs": {
+            "$ref": "#/components/schemas/CostModelStatus"
+          },
+          "drawdown": {
+            "$ref": "#/components/schemas/DrawdownOut"
+          },
+          "equity_curve": {
+            "items": {
+              "$ref": "#/components/schemas/EquityPoint"
+            },
+            "title": "Equity Curve",
+            "type": "array"
+          },
+          "expectancy": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "final_equity": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "initial_capital": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "profit_factor": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "rejections": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Rejections",
+            "type": "object"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sharpe": {
+            "$ref": "#/components/schemas/SharpeObject"
+          },
+          "sortino": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "strategy": {
+            "title": "Strategy",
+            "type": "string"
+          },
+          "total_costs": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "total_return": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "trades": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "trading_days": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "turnover": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "win_rate": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "window": {
+            "$ref": "#/components/schemas/DateRange"
+          }
+        },
+        "required": [
+          "run_id",
+          "strategy",
+          "window",
+          "badge",
+          "costs",
+          "sharpe",
+          "sortino",
+          "calmar",
+          "benchmark_sharpe",
+          "total_return",
+          "annual_return",
+          "annual_volatility",
+          "drawdown",
+          "trades",
+          "win_rate",
+          "profit_factor",
+          "expectancy",
+          "turnover",
+          "total_costs",
+          "cost_drag",
+          "cost_attribution",
+          "rejections",
+          "initial_capital",
+          "final_equity",
+          "trading_days",
+          "equity_curve"
+        ],
+        "title": "BacktestResult",
+        "type": "object"
+      },
+      "Bar": {
+        "properties": {
+          "adj_close": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "close": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "date_display": {
+            "title": "Date Display",
+            "type": "string"
+          },
+          "high": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "low": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "open": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "security_id": {
+            "title": "Security Id",
+            "type": "string"
+          },
+          "volume": {
+            "$ref": "#/components/schemas/Num"
+          }
+        },
+        "required": [
+          "date",
+          "date_display",
+          "security_id",
+          "open",
+          "high",
+          "low",
+          "close",
+          "adj_close",
+          "volume"
+        ],
+        "title": "Bar",
+        "type": "object"
+      },
+      "BarSeries": {
+        "properties": {
+          "bars": {
+            "items": {
+              "$ref": "#/components/schemas/Bar"
+            },
+            "title": "Bars",
+            "type": "array"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "security_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Security Id"
+          },
+          "truncated": {
+            "description": "True when the window exceeded 20000 rows and was cut.",
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "window": {
+            "$ref": "#/components/schemas/DateRange"
+          }
+        },
+        "required": [
+          "security_id",
+          "window",
+          "count",
+          "truncated",
+          "bars"
+        ],
+        "title": "BarSeries",
+        "type": "object"
+      },
+      "CostModelStatus": {
+        "description": "Whether a result's costs are realistic, and the marker if they are not.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "realistic": {
+            "description": "True only for exactly 'IndianEquityCostModel'.",
+            "title": "Realistic",
+            "type": "boolean"
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Marker text to display beside the result. Null when realistic.",
+            "title": "Warning"
+          }
+        },
+        "required": [
+          "name",
+          "realistic"
+        ],
+        "title": "CostModelStatus",
+        "type": "object"
+      },
+      "CovarianceOut": {
+        "properties": {
+          "condition_number": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "n_assets": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "n_observations": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "shrinkage": {
+            "$ref": "#/components/schemas/Num"
+          }
+        },
+        "required": [
+          "method",
+          "n_assets",
+          "n_observations",
+          "shrinkage",
+          "condition_number",
+          "detail"
+        ],
+        "title": "CovarianceOut",
+        "type": "object"
+      },
+      "CoverageOut": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "bars": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "first_bar": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Bar"
+          },
+          "last_bar": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Bar"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "securities_with_data": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "spans_window": {
+            "title": "Spans Window",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "available",
+          "spans_window",
+          "bars",
+          "securities_with_data",
+          "first_bar",
+          "last_bar",
+          "detail"
+        ],
+        "title": "CoverageOut",
+        "type": "object"
+      },
+      "DateRange": {
+        "description": "An inclusive window, with both dates display-ready.",
+        "properties": {
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "end_display": {
+            "title": "End Display",
+            "type": "string"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "start_display": {
+            "title": "Start Display",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "start_display",
+          "end_display"
+        ],
+        "title": "DateRange",
+        "type": "object"
+      },
+      "DrawdownOut": {
+        "properties": {
+          "drawdown_days": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "max_drawdown": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "peak_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peak On"
+          },
+          "recovered": {
+            "title": "Recovered",
+            "type": "boolean"
+          },
+          "recovered_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovered On"
+          },
+          "recovery_days": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "trough_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trough On"
+          }
+        },
+        "required": [
+          "max_drawdown",
+          "peak_on",
+          "trough_on",
+          "recovered_on",
+          "drawdown_days",
+          "recovery_days",
+          "recovered"
+        ],
+        "title": "DrawdownOut",
+        "type": "object"
+      },
+      "EquityPoint": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "drawdown": {
+            "description": "Negative fraction from the running peak.",
+            "title": "Drawdown",
+            "type": "number"
+          },
+          "equity": {
+            "title": "Equity",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "equity",
+          "drawdown"
+        ],
+        "title": "EquityPoint",
+        "type": "object"
+      },
+      "EvaluationOut": {
+        "properties": {
+          "autocorrelation": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "factor_name": {
+            "title": "Factor Name",
+            "type": "string"
+          },
+          "fitness": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "horizons": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Horizons",
+            "type": "array"
+          },
+          "ic_decay": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Num"
+            },
+            "title": "Ic Decay",
+            "type": "object"
+          },
+          "ineligibility_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ineligibility Reason"
+          },
+          "long_short_spread": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "pearson_ic": {
+            "items": {
+              "$ref": "#/components/schemas/ICStatsOut"
+            },
+            "title": "Pearson Ic",
+            "type": "array"
+          },
+          "primary_horizon": {
+            "title": "Primary Horizon",
+            "type": "integer"
+          },
+          "quantile_returns": {
+            "items": {
+              "$ref": "#/components/schemas/Num"
+            },
+            "title": "Quantile Returns",
+            "type": "array"
+          },
+          "spearman_ic": {
+            "items": {
+              "$ref": "#/components/schemas/ICStatsOut"
+            },
+            "title": "Spearman Ic",
+            "type": "array"
+          },
+          "turnover": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "window": {
+            "$ref": "#/components/schemas/DateRange"
+          }
+        },
+        "required": [
+          "factor_name",
+          "window",
+          "primary_horizon",
+          "horizons",
+          "pearson_ic",
+          "spearman_ic",
+          "ic_decay",
+          "quantile_returns",
+          "long_short_spread",
+          "turnover",
+          "autocorrelation",
+          "fitness",
+          "eligible",
+          "ineligibility_reason"
+        ],
+        "title": "EvaluationOut",
+        "type": "object"
+      },
+      "EvaluationRequest": {
+        "properties": {
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "factor": {
+            "description": "A registered factor name.",
+            "title": "Factor",
+            "type": "string"
+          },
+          "index_name": {
+            "default": "NIFTY500",
+            "title": "Index Name",
+            "type": "string"
+          },
+          "n_quantiles": {
+            "default": 5,
+            "maximum": 20.0,
+            "minimum": 2.0,
+            "title": "N Quantiles",
+            "type": "integer"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          }
+        },
+        "required": [
+          "factor"
+        ],
+        "title": "EvaluationRequest",
+        "type": "object"
+      },
+      "FactorSummary": {
+        "properties": {
+          "direction": {
+            "description": "+1 scores high values high, -1 inverts.",
+            "title": "Direction",
+            "type": "integer"
+          },
+          "feature": {
+            "title": "Feature",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "feature",
+          "direction"
+        ],
+        "title": "FactorSummary",
+        "type": "object"
+      },
+      "FeaturePanel": {
+        "properties": {
+          "count": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "window": {
+            "$ref": "#/components/schemas/DateRange"
+          }
+        },
+        "required": [
+          "features",
+          "window",
+          "count",
+          "truncated",
+          "rows"
+        ],
+        "title": "FeaturePanel",
+        "type": "object"
+      },
+      "FeatureRow": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "date_display": {
+            "title": "Date Display",
+            "type": "string"
+          },
+          "security_id": {
+            "title": "Security Id",
+            "type": "string"
+          },
+          "values": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Values",
+            "type": "object"
+          }
+        },
+        "required": [
+          "date",
+          "date_display",
+          "security_id",
+          "values"
+        ],
+        "title": "FeatureRow",
+        "type": "object"
+      },
+      "Finding": {
+        "properties": {
+          "check": {
+            "title": "Check",
+            "type": "string"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "date_display": {
+            "title": "Date Display",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "remedy": {
+            "title": "Remedy",
+            "type": "string"
+          },
+          "security_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Security Id"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          }
+        },
+        "required": [
+          "check",
+          "severity",
+          "security_id",
+          "date",
+          "date_display",
+          "detail",
+          "remedy"
+        ],
+        "title": "Finding",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Holding": {
+        "properties": {
+          "security_id": {
+            "title": "Security Id",
+            "type": "string"
+          },
+          "weight": {
+            "$ref": "#/components/schemas/Num"
+          }
+        },
+        "required": [
+          "security_id",
+          "weight"
+        ],
+        "title": "Holding",
+        "type": "object"
+      },
+      "HypothesisOut": {
+        "properties": {
+          "content_hash": {
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "prediction": {
+            "title": "Prediction",
+            "type": "string"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "registered_on": {
+            "title": "Registered On",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "threshold": {
+            "title": "Threshold",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "subject",
+          "rationale",
+          "prediction",
+          "metric",
+          "threshold",
+          "registered_on",
+          "status",
+          "content_hash"
+        ],
+        "title": "HypothesisOut",
+        "type": "object"
+      },
+      "ICStatsOut": {
+        "properties": {
+          "horizon": {
+            "title": "Horizon",
+            "type": "integer"
+          },
+          "ic_ir": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "interpretation": {
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "mean_ic": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "n_periods": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "p_value": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "std_ic": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "t_stat": {
+            "$ref": "#/components/schemas/Num",
+            "description": "Newey-West corrected for overlapping returns."
+          }
+        },
+        "required": [
+          "horizon",
+          "method",
+          "mean_ic",
+          "std_ic",
+          "ic_ir",
+          "t_stat",
+          "p_value",
+          "n_periods",
+          "interpretation"
+        ],
+        "title": "ICStatsOut",
+        "type": "object"
+      },
+      "IntervalOut": {
+        "properties": {
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "end_display": {
+            "title": "End Display",
+            "type": "string"
+          },
+          "is_open": {
+            "description": "True while the security is still a member.",
+            "title": "Is Open",
+            "type": "boolean"
+          },
+          "security_id": {
+            "title": "Security Id",
+            "type": "string"
+          },
+          "source_document": {
+            "description": "The reconstitution filing this interval was derived from.",
+            "title": "Source Document",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "start_display": {
+            "title": "Start Display",
+            "type": "string"
+          }
+        },
+        "required": [
+          "security_id",
+          "start",
+          "end",
+          "start_display",
+          "end_display",
+          "is_open",
+          "source_document"
+        ],
+        "title": "IntervalOut",
+        "type": "object"
+      },
+      "JobOut": {
+        "properties": {
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "title": "Parameters",
+            "type": "object"
+          },
+          "poll_url": {
+            "title": "Poll Url",
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BacktestResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "$ref": "#/components/schemas/JobState"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "kind",
+          "state",
+          "submitted_at",
+          "started_at",
+          "finished_at",
+          "duration_seconds",
+          "parameters",
+          "error",
+          "result",
+          "poll_url"
+        ],
+        "title": "JobOut",
+        "type": "object"
+      },
+      "JobState": {
+        "enum": [
+          "queued",
+          "running",
+          "complete",
+          "failed"
+        ],
+        "title": "JobState",
+        "type": "string"
+      },
+      "LogPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "returned": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "total_trials": {
+            "$ref": "#/components/schemas/Num",
+            "description": "Completed runs in the whole log."
+          }
+        },
+        "required": [
+          "total_trials",
+          "returned",
+          "items"
+        ],
+        "title": "LogPage",
+        "type": "object"
+      },
+      "LogSummaryOut": {
+        "properties": {
+          "best": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SharpeObject"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "complete_runs": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "dirty_runs": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "exploratory_runs": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "failed_runs": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "first_run_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Run At"
+          },
+          "holdout_runs": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "last_run_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run At"
+          },
+          "preregistered_runs": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "rendered": {
+            "description": "Plain-text summary, as the CLI prints it.",
+            "title": "Rendered",
+            "type": "string"
+          },
+          "running_runs": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "runs_per_strategy": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Runs Per Strategy",
+            "type": "object"
+          },
+          "sharpe_variance": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "strategies": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "total_runs": {
+            "$ref": "#/components/schemas/Num"
+          }
+        },
+        "required": [
+          "total_runs",
+          "complete_runs",
+          "failed_runs",
+          "running_runs",
+          "strategies",
+          "holdout_runs",
+          "exploratory_runs",
+          "preregistered_runs",
+          "dirty_runs",
+          "sharpe_variance",
+          "runs_per_strategy",
+          "first_run_at",
+          "last_run_at",
+          "best",
+          "rendered"
+        ],
+        "title": "LogSummaryOut",
+        "type": "object"
+      },
+      "MembershipOut": {
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "as_of_display": {
+            "title": "As Of Display",
+            "type": "string"
+          },
+          "count": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "index_name": {
+            "title": "Index Name",
+            "type": "string"
+          },
+          "security_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Security Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "index_name",
+          "as_of",
+          "as_of_display",
+          "count",
+          "security_ids"
+        ],
+        "title": "MembershipOut",
+        "type": "object"
+      },
+      "Num": {
+        "description": "A number and the exact string to print for it.\n\n``value`` is ``None`` for a genuinely missing quantity, and ``formatted`` is\nthen an em dash. A frontend never has to decide what absence looks like.",
+        "properties": {
+          "formatted": {
+            "description": "Display string. Print this, never `value`.",
+            "title": "Formatted",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Raw value, for charts and sorting.",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value",
+          "formatted"
+        ],
+        "title": "Num",
+        "type": "object"
+      },
+      "OptimiseOut": {
+        "properties": {
+          "covariance": {
+            "$ref": "#/components/schemas/CovarianceOut"
+          },
+          "effective_positions": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "ex_ante_sharpe": {
+            "$ref": "#/components/schemas/ReferenceRatio"
+          },
+          "expected_return": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "holdings": {
+            "items": {
+              "$ref": "#/components/schemas/Holding"
+            },
+            "title": "Holdings",
+            "type": "array"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "n_assets": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "status": {
+            "description": "cvxpy solver status, or 'analytic'.",
+            "title": "Status",
+            "type": "string"
+          },
+          "turnover": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "volatility": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "window": {
+            "$ref": "#/components/schemas/DateRange"
+          }
+        },
+        "required": [
+          "method",
+          "status",
+          "window",
+          "n_assets",
+          "holdings",
+          "volatility",
+          "expected_return",
+          "ex_ante_sharpe",
+          "turnover",
+          "effective_positions",
+          "covariance"
+        ],
+        "title": "OptimiseOut",
+        "type": "object"
+      },
+      "OptimiseRequest": {
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Point-in-time date. Membership is resolved as of this date.",
+            "title": "As Of"
+          },
+          "covariance": {
+            "default": "ledoit_wolf",
+            "description": "sample | ledoit_wolf | constant_correlation | single_index. Shrunk by default: sample covariance is unstable when assets outnumber observations.",
+            "title": "Covariance",
+            "type": "string"
+          },
+          "index_name": {
+            "default": "NIFTY500",
+            "title": "Index Name",
+            "type": "string"
+          },
+          "long_only": {
+            "default": true,
+            "title": "Long Only",
+            "type": "boolean"
+          },
+          "lookback": {
+            "default": 252,
+            "maximum": 2520.0,
+            "minimum": 30.0,
+            "title": "Lookback",
+            "type": "integer"
+          },
+          "max_weight": {
+            "default": 0.1,
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Max Weight",
+            "type": "number"
+          },
+          "method": {
+            "default": "minimum_variance",
+            "description": "One of ('equal_weight', 'inverse_volatility', 'risk_parity', 'minimum_variance', 'maximum_sharpe').",
+            "title": "Method",
+            "type": "string"
+          },
+          "previous_weights": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For turnover measurement against a live book.",
+            "title": "Previous Weights"
+          }
+        },
+        "title": "OptimiseRequest",
+        "type": "object"
+      },
+      "QualityReport": {
+        "properties": {
+          "checks_run": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Checks Run",
+            "type": "array"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "generated_on_demand": {
+            "default": true,
+            "description": "These findings are computed per request. There is no persisted data_quality_findings table yet (PRD Module 3).",
+            "title": "Generated On Demand",
+            "type": "boolean"
+          },
+          "rows_examined": {
+            "$ref": "#/components/schemas/Num"
+          }
+        },
+        "required": [
+          "checks_run",
+          "rows_examined",
+          "counts",
+          "findings"
+        ],
+        "title": "QualityReport",
+        "type": "object"
+      },
+      "ReferenceRatio": {
+        "description": "A risk-adjusted ratio that deflation does not apply to, and why.\n\nUsed for the benchmark's Sharpe (nobody selected the index from a search) and\nan optimiser's ex-ante ratio (a forecast from a covariance matrix, not a\ntrack record). ``why_not_deflated`` is required, so a Sharpe-shaped number\ncannot leave the API without either a trials count or a stated reason it has\nnone.",
+        "properties": {
+          "basis": {
+            "description": "'realised' or 'ex_ante'.",
+            "title": "Basis",
+            "type": "string"
+          },
+          "display": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "kind": {
+            "description": "e.g. 'benchmark_sharpe', 'ex_ante_sharpe'.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "why_not_deflated": {
+            "description": "Required. Why a trials count and deflation do not apply here.",
+            "minLength": 1,
+            "title": "Why Not Deflated",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "basis",
+          "display",
+          "why_not_deflated"
+        ],
+        "title": "ReferenceRatio",
+        "type": "object"
+      },
+      "RunOut": {
+        "description": "One ``research_log`` row.\n\n``sharpe`` is a full :class:`SharpeObject` when the run recorded one, and\n``null`` when it did not (a failed or still-running row). There is no shape\nin which it is a number.",
+        "properties": {
+          "badge": {
+            "$ref": "#/components/schemas/SplitBadge"
+          },
+          "costs": {
+            "$ref": "#/components/schemas/CostModelStatus"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "exploratory": {
+            "title": "Exploratory",
+            "type": "boolean"
+          },
+          "git_commit_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Git Commit Hash"
+          },
+          "git_dirty": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Git Dirty"
+          },
+          "hypothesis_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hypothesis Id"
+          },
+          "index_name": {
+            "title": "Index Name",
+            "type": "string"
+          },
+          "n_periods": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "title": "Parameters",
+            "type": "object"
+          },
+          "reproducible": {
+            "description": "Has a commit hash and a clean tree \u2014 reproducible from git alone.",
+            "title": "Reproducible",
+            "type": "boolean"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sharpe": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SharpeObject"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "strategy_name": {
+            "title": "Strategy Name",
+            "type": "string"
+          },
+          "universe": {
+            "title": "Universe",
+            "type": "string"
+          },
+          "window_display": {
+            "title": "Window Display",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "strategy_name",
+          "universe",
+          "index_name",
+          "start_date",
+          "end_date",
+          "window_display",
+          "badge",
+          "costs",
+          "status",
+          "exploratory",
+          "hypothesis_id",
+          "git_commit_hash",
+          "git_dirty",
+          "reproducible",
+          "created_at",
+          "n_periods",
+          "parameters",
+          "error",
+          "sharpe"
+        ],
+        "title": "RunOut",
+        "type": "object"
+      },
+      "SecurityOut": {
+        "properties": {
+          "delisting_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delisting Date"
+          },
+          "delisting_display": {
+            "title": "Delisting Display",
+            "type": "string"
+          },
+          "delisting_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delisting Reason"
+          },
+          "exchange": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exchange"
+          },
+          "is_active": {
+            "description": "False once a delisting date is recorded.",
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "isin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isin"
+          },
+          "listing_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Date"
+          },
+          "listing_display": {
+            "title": "Listing Display",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "security_id": {
+            "title": "Security Id",
+            "type": "string"
+          },
+          "tickers": {
+            "items": {
+              "$ref": "#/components/schemas/TickerPeriod"
+            },
+            "title": "Tickers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "security_id",
+          "name",
+          "isin",
+          "exchange",
+          "listing_date",
+          "delisting_date",
+          "delisting_reason",
+          "listing_display",
+          "delisting_display",
+          "is_active"
+        ],
+        "title": "SecurityOut",
+        "type": "object"
+      },
+      "SecurityPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SecurityOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "items"
+        ],
+        "title": "SecurityPage",
+        "type": "object"
+      },
+      "Severity": {
+        "enum": [
+          "error",
+          "warning",
+          "info"
+        ],
+        "title": "Severity",
+        "type": "string"
+      },
+      "SharpeObject": {
+        "description": "A Sharpe ratio bound to the evidence needed to interpret it.\n\nThe shape PRD Module 12 mandates, plus the rest of\n:class:`~quantlab.research.reporting.SharpeReport` so the UI never needs a\nsecond request to render the component. There is deliberately no\n``SharpeObject(value=1.8)`` path: :meth:`from_report` is the only factory,\nand a report cannot exist without a trials count read from the log.",
+        "properties": {
+          "badge": {
+            "$ref": "#/components/schemas/SplitBadge"
+          },
+          "cost_model": {
+            "description": "Costs the return series was net of.",
+            "title": "Cost Model",
+            "type": "string"
+          },
+          "costs": {
+            "$ref": "#/components/schemas/CostModelStatus"
+          },
+          "deflated_display": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "deflated_sharpe": {
+            "description": "P[true Sharpe > 0] after correcting for `trials`.",
+            "title": "Deflated Sharpe",
+            "type": "number"
+          },
+          "expected_max_sharpe": {
+            "description": "Best-of-`trials` Sharpe expected from an edgeless search.",
+            "title": "Expected Max Sharpe",
+            "type": "number"
+          },
+          "holdout_touched": {
+            "title": "Holdout Touched",
+            "type": "boolean"
+          },
+          "n_periods": {
+            "title": "N Periods",
+            "type": "integer"
+          },
+          "pbo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Probability of backtest overfitting, when computed.",
+            "title": "Pbo"
+          },
+          "pbo_display": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "provenance": {
+            "description": "'exploratory' or 'pre-registered (H1)'.",
+            "title": "Provenance",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "significant": {
+            "description": "Whether the deflated Sharpe clears the 95% threshold.",
+            "title": "Significant",
+            "type": "boolean"
+          },
+          "split": {
+            "description": "Which split produced `value`.",
+            "title": "Split",
+            "type": "string"
+          },
+          "summary": {
+            "description": "One-line rendering with trials and deflation inseparable.",
+            "title": "Summary",
+            "type": "string"
+          },
+          "trials": {
+            "description": "Trials preceding it, counted from research_log.",
+            "title": "Trials",
+            "type": "integer"
+          },
+          "trials_display": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "value": {
+            "description": "Annualised Sharpe as observed.",
+            "title": "Value",
+            "type": "number"
+          },
+          "value_display": {
+            "$ref": "#/components/schemas/Num"
+          }
+        },
+        "required": [
+          "value",
+          "trials",
+          "deflated_sharpe",
+          "split",
+          "cost_model",
+          "expected_max_sharpe",
+          "run_id",
+          "n_periods",
+          "significant",
+          "provenance",
+          "holdout_touched",
+          "badge",
+          "costs",
+          "value_display",
+          "deflated_display",
+          "trials_display",
+          "pbo_display",
+          "summary"
+        ],
+        "title": "SharpeObject",
+        "type": "object"
+      },
+      "SplitBadge": {
+        "description": "The TRAIN / VALIDATION / HOLDOUT marker, decomposed server-side.\n\n``quantlab.config.resolve_split`` emits compound labels when a window spans a\nboundary (``train+validation``). The UI must render those as separate\nsegments and must never collapse them to the cleaner of the two, so the\nsplitting is done here \u2014 the frontend does no computation, including this.",
+        "properties": {
+          "holdout_touched": {
+            "description": "Whether this result reaches into the locked holdout.",
+            "title": "Holdout Touched",
+            "type": "boolean"
+          },
+          "label": {
+            "description": "The raw split label, e.g. 'train+validation'.",
+            "title": "Label",
+            "type": "string"
+          },
+          "parts": {
+            "description": "Decomposed segments, in order.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Parts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "label",
+          "parts",
+          "holdout_touched"
+        ],
+        "title": "SplitBadge",
+        "type": "object"
+      },
+      "StrategySummary": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "title": "Parameters",
+            "type": "object"
+          },
+          "warmup": {
+            "description": "Bars required before the first signal.",
+            "title": "Warmup",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "warmup",
+          "parameters"
+        ],
+        "title": "StrategySummary",
+        "type": "object"
+      },
+      "StressReportOut": {
+        "properties": {
+          "rendered": {
+            "title": "Rendered",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/StressResultOut"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "skipped": {
+            "description": "Windows with no ingested data. Never replaced by an estimate.",
+            "items": {
+              "$ref": "#/components/schemas/CoverageOut"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results",
+          "skipped",
+          "rendered"
+        ],
+        "title": "StressReportOut",
+        "type": "object"
+      },
+      "StressRequest": {
+        "properties": {
+          "slugs": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Window slugs. Omit for every configured window.",
+            "title": "Slugs"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weights"
+          }
+        },
+        "title": "StressRequest",
+        "type": "object"
+      },
+      "StressResultOut": {
+        "properties": {
+          "max_drawdown": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "mean_correlation": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "peak_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peak On"
+          },
+          "recovered": {
+            "title": "Recovered",
+            "type": "boolean"
+          },
+          "recovery_days": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "securities": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "total_return": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "trading_days": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "trough_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trough On"
+          },
+          "volatility": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "window": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "worst_day": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "worst_day_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worst Day On"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "window",
+          "total_return",
+          "max_drawdown",
+          "worst_day",
+          "worst_day_on",
+          "peak_on",
+          "trough_on",
+          "recovery_days",
+          "recovered",
+          "volatility",
+          "trading_days",
+          "securities",
+          "mean_correlation"
+        ],
+        "title": "StressResultOut",
+        "type": "object"
+      },
+      "StressWindowOut": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "window_display": {
+            "title": "Window Display",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name",
+          "start",
+          "end",
+          "window_display",
+          "description"
+        ],
+        "title": "StressWindowOut",
+        "type": "object"
+      },
+      "SurvivorshipComparison": {
+        "description": "Point-in-time membership against today's list, on the same date.\n\n``survivorship_only`` are the securities a naive backtest would have traded\non ``as_of`` purely because they are in the index *now*. Every one of them is\na company the researcher could not have known to buy at the time.",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "as_of_display": {
+            "title": "As Of Display",
+            "type": "string"
+          },
+          "current_count": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "dropped_since": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dropped Since",
+            "type": "array"
+          },
+          "index_name": {
+            "title": "Index Name",
+            "type": "string"
+          },
+          "overlap": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "point_in_time_count": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "survival_rate": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "survivorship_only": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Survivorship Only",
+            "type": "array"
+          }
+        },
+        "required": [
+          "index_name",
+          "as_of",
+          "as_of_display",
+          "point_in_time_count",
+          "current_count",
+          "survivorship_only",
+          "dropped_since",
+          "overlap",
+          "survival_rate"
+        ],
+        "title": "SurvivorshipComparison",
+        "type": "object"
+      },
+      "TickerPeriod": {
+        "properties": {
+          "end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "end_display": {
+            "title": "End Display",
+            "type": "string"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "start_display": {
+            "title": "Start Display",
+            "type": "string"
+          },
+          "ticker": {
+            "title": "Ticker",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker",
+          "start_date",
+          "end_date",
+          "start_display",
+          "end_display",
+          "is_current"
+        ],
+        "title": "TickerPeriod",
+        "type": "object"
+      },
+      "VaREntry": {
+        "properties": {
+          "confidence": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "excess_kurtosis": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "expected_shortfall": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "n_observations": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "skew": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "tail_ratio": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "var": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "volatility": {
+            "$ref": "#/components/schemas/Num"
+          }
+        },
+        "required": [
+          "method",
+          "confidence",
+          "var",
+          "expected_shortfall",
+          "tail_ratio",
+          "n_observations",
+          "volatility",
+          "skew",
+          "excess_kurtosis"
+        ],
+        "title": "VaREntry",
+        "type": "object"
+      },
+      "VaROut": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/VaREntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "interpretation": {
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "n_assets": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "n_observations": {
+            "$ref": "#/components/schemas/Num"
+          },
+          "window": {
+            "$ref": "#/components/schemas/DateRange"
+          }
+        },
+        "required": [
+          "window",
+          "n_assets",
+          "n_observations",
+          "entries",
+          "interpretation"
+        ],
+        "title": "VaROut",
+        "type": "object"
+      },
+      "VaRRequest": {
+        "properties": {
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "index_name": {
+            "default": "NIFTY500",
+            "title": "Index Name",
+            "type": "string"
+          },
+          "lookback": {
+            "default": 504,
+            "maximum": 5000.0,
+            "minimum": 30.0,
+            "title": "Lookback",
+            "type": "integer"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weights"
+          }
+        },
+        "title": "VaRRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "\nThe QuantLab research API. Sole data source for the Next.js product UI and the\nStreamlit researcher dashboard.\n\n**Two contracts constrain every response.**\n\n*Numbers travel with their rendering.* Each numeric field is an object with a raw\n`value` for charts and sorting and a `formatted` string to print. Formatting is\nimplemented once, server-side, so the two frontends and the PDF tearsheet cannot\ndrift apart. A missing value is `null` with an em dash, never `0` or `NaN`.\n\n*A Sharpe ratio is never a bare float.* Any endpoint returning one returns\n`SharpeObject` \u2014 `{value, trials, deflated_sharpe, pbo, split, cost_model, \u2026}` \u2014\nwhere `trials` is read from `research_log` and can never be supplied by hand. A\nrisk-adjusted ratio that deflation genuinely does not apply to (a benchmark, an\noptimiser's ex-ante forecast) returns `ReferenceRatio`, which requires a written\nreason. There is no shape in this schema that carries a Sharpe without either.\n",
+    "title": "QuantLab API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/backtests": {
+      "post": {
+        "operationId": "submit_backtests_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BacktestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit a backtest. Returns a job id to poll.",
+        "tags": [
+          "backtests"
+        ]
+      }
+    },
+    "/backtests/jobs": {
+      "get": {
+        "operationId": "list_jobs_backtests_jobs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobOut"
+                  },
+                  "title": "Response List Jobs Backtests Jobs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recent jobs.",
+        "tags": [
+          "backtests"
+        ]
+      }
+    },
+    "/backtests/jobs/{job_id}": {
+      "get": {
+        "operationId": "poll_backtests_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Poll one job.",
+        "tags": [
+          "backtests"
+        ]
+      }
+    },
+    "/backtests/strategies": {
+      "get": {
+        "operationId": "strategies_backtests_strategies_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StrategySummary"
+                  },
+                  "title": "Response Strategies Backtests Strategies Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Available strategies.",
+        "tags": [
+          "backtests"
+        ]
+      }
+    },
+    "/factors": {
+      "get": {
+        "operationId": "list_factors_factors_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FactorSummary"
+                  },
+                  "title": "Response List Factors Factors Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Registered factors.",
+        "tags": [
+          "factors"
+        ]
+      }
+    },
+    "/factors/evaluate": {
+      "post": {
+        "operationId": "evaluate_factors_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Evaluate one factor over a window.",
+        "tags": [
+          "factors"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness probe.",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/market/features": {
+      "get": {
+        "operationId": "features_market_features_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "security_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Security Id"
+            }
+          },
+          {
+            "description": "Comma-separated feature names. Omit for all.",
+            "in": "query",
+            "name": "names",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Comma-separated feature names. Omit for all.",
+              "title": "Names"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5000,
+              "maximum": 20000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeaturePanel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "The engineered feature panel, from partitioned parquet.",
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/market/ohlcv": {
+      "get": {
+        "operationId": "ohlcv_market_ohlcv_get",
+        "parameters": [
+          {
+            "description": "Restrict to one security. Omit for all.",
+            "in": "query",
+            "name": "security_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Restrict to one security. Omit for all.",
+              "title": "Security Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 5000,
+              "maximum": 20000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarSeries"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Daily OHLCV bars.",
+        "tags": [
+          "market"
+        ]
+      }
+    },
+    "/portfolio/methods": {
+      "get": {
+        "operationId": "methods_portfolio_methods_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response Methods Portfolio Methods Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Available optimisers.",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/portfolio/optimise": {
+      "post": {
+        "operationId": "optimise_portfolio_optimise_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimiseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimiseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Optimise weights.",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/quality/findings": {
+      "get": {
+        "operationId": "findings_quality_findings_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "security_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Security Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QualityReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run the checks now.",
+        "tags": [
+          "quality"
+        ]
+      }
+    },
+    "/reports/tearsheet/{run_id}.html": {
+      "get": {
+        "operationId": "tearsheet_html_reports_tearsheet__run_id__html_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tearsheet as HTML.",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/reports/tearsheet/{run_id}.pdf": {
+      "get": {
+        "operationId": "tearsheet_pdf_reports_tearsheet__run_id__pdf_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Content-Disposition attachment vs inline.",
+            "in": "query",
+            "name": "download",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "Content-Disposition attachment vs inline.",
+              "title": "Download",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "application/pdf": {}
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "description": "The PDF backend's system libraries are missing."
+          }
+        },
+        "summary": "Tearsheet as PDF, with its mandatory methodology page.",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/research/deflated/{run_id}": {
+      "get": {
+        "operationId": "deflated_research_deflated__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Narrow the trial universe to one strategy name, for reporting. The default \u2014 the whole log \u2014 is the honest scope: model search and strategy search are one selection process.",
+            "in": "query",
+            "name": "scope_strategy",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Narrow the trial universe to one strategy name, for reporting. The default \u2014 the whole log \u2014 is the honest scope: model search and strategy search are one selection process.",
+              "title": "Scope Strategy"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharpeObject"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Deflate a run's Sharpe against the log's trials count.",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/research/hypotheses": {
+      "get": {
+        "operationId": "hypotheses_research_hypotheses_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HypothesisOut"
+                  },
+                  "title": "Response Hypotheses Research Hypotheses Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Pre-registered hypotheses.",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/research/log": {
+      "get": {
+        "operationId": "query_log_research_log_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "strategy",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy"
+            }
+          },
+          {
+            "description": "complete | running | failed. Omit for all statuses.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "complete",
+              "description": "complete | running | failed. Omit for all statuses.",
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Query the research log.",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/research/log/summary": {
+      "get": {
+        "operationId": "log_summary_research_log_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Aggregate the log.",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/research/log/{run_id}": {
+      "get": {
+        "operationId": "get_run_research_log__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One run by id.",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/risk/stress": {
+      "post": {
+        "operationId": "stress_risk_stress_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StressRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StressReportOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replay the portfolio through each stress window.",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/risk/stress/coverage": {
+      "get": {
+        "operationId": "coverage_risk_stress_coverage_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CoverageOut"
+                  },
+                  "title": "Response Coverage Risk Stress Coverage Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Which stress windows have ingested data.",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/risk/stress/windows": {
+      "get": {
+        "operationId": "stress_windows_risk_stress_windows_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StressWindowOut"
+                  },
+                  "title": "Response Stress Windows Risk Stress Windows Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "The configured historical stress windows.",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/risk/var": {
+      "post": {
+        "operationId": "value_at_risk_risk_var_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VaRRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaROut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "VaR and ES, three estimators.",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/securities": {
+      "get": {
+        "operationId": "list_securities_securities_get",
+        "parameters": [
+          {
+            "description": "Case-insensitive match on ticker, name or ISIN.",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Case-insensitive match on ticker, name or ISIN.",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Exclude delisted securities. Off by default \u2014 a universe that silently drops delistings is survivorship-biased.",
+            "in": "query",
+            "name": "active_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Exclude delisted securities. Off by default \u2014 a universe that silently drops delistings is survivorship-biased.",
+              "title": "Active Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List securities.",
+        "tags": [
+          "securities"
+        ]
+      }
+    },
+    "/securities/{security_id}": {
+      "get": {
+        "operationId": "get_security_securities__security_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "security_id",
+            "required": true,
+            "schema": {
+              "title": "Security Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One security by id.",
+        "tags": [
+          "securities"
+        ]
+      }
+    },
+    "/universe/{index_name}/as-of": {
+      "get": {
+        "operationId": "membership_as_of_universe__index_name__as_of_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "index_name",
+            "required": true,
+            "schema": {
+              "title": "Index Name",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The date to resolve membership for.",
+            "in": "query",
+            "name": "on",
+            "required": true,
+            "schema": {
+              "description": "The date to resolve membership for.",
+              "format": "date",
+              "title": "On",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Constituents on a date, from reconstitution history.",
+        "tags": [
+          "universe"
+        ]
+      }
+    },
+    "/universe/{index_name}/intervals": {
+      "get": {
+        "operationId": "intervals_universe__index_name__intervals_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "index_name",
+            "required": true,
+            "schema": {
+              "title": "Index Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/IntervalOut"
+                  },
+                  "title": "Response Intervals Universe  Index Name  Intervals Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Every membership interval, for the date-scrubber timeline.",
+        "tags": [
+          "universe"
+        ]
+      }
+    },
+    "/universe/{index_name}/survivorship": {
+      "get": {
+        "operationId": "survivorship_universe__index_name__survivorship_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "index_name",
+            "required": true,
+            "schema": {
+              "title": "Index Name",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The historical date to compare against.",
+            "in": "query",
+            "name": "on",
+            "required": true,
+            "schema": {
+              "description": "The historical date to compare against.",
+              "format": "date",
+              "title": "On",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurvivorshipComparison"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Point-in-time membership vs today's list \u2014 the bias, quantified.",
+        "tags": [
+          "universe"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "description": "Securities and their ticker history.",
+      "name": "securities"
+    },
+    {
+      "description": "Point-in-time index membership. Never current constituents.",
+      "name": "universe"
+    },
+    {
+      "description": "OHLCV bars and the engineered feature panel.",
+      "name": "market"
+    },
+    {
+      "description": "Data quality findings, computed on demand.",
+      "name": "quality"
+    },
+    {
+      "description": "Factor evaluation: IC, decay, quantiles.",
+      "name": "factors"
+    },
+    {
+      "description": "Submit a backtest, poll it by job id, read its result.",
+      "name": "backtests"
+    },
+    {
+      "description": "The research log, trials counts and deflated Sharpe ratios.",
+      "name": "research"
+    },
+    {
+      "description": "VaR, expected shortfall and stress replays.",
+      "name": "risk"
+    },
+    {
+      "description": "Portfolio optimisation over the universe.",
+      "name": "portfolio"
+    },
+    {
+      "description": "PDF tearsheets.",
+      "name": "reports"
+    }
+  ]
+}

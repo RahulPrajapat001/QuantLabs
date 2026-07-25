@@ -74,6 +74,18 @@ class Settings(BaseSettings):
     #: Minimum absolute Newey-West t-statistic on the mean IC for eligibility.
     factor_min_ic_tstat: float = Field(default=2.0, ge=0.0)
 
+    # API (PRD Module 12)
+    #: Browser origins permitted to call the API. Defaults to the Next.js dev
+    #: server; production origins are supplied via QUANTLAB_API_CORS_ORIGINS.
+    #: Never ``["*"]`` by default — the API serves an unauthenticated research
+    #: database, and a permissive default is the kind that reaches production.
+    api_cors_origins: list[str] = Field(
+        default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"]
+    )
+    #: Concurrent backtest jobs. Two by default: backtests are CPU-bound Python,
+    #: so more threads buy queueing rather than throughput.
+    api_job_workers: int = Field(default=2, ge=1, le=16)
+
     # Data-provider credentials (blank by default; set locally, never commit)
     alpha_vantage_api_key: str | None = Field(default=None)
     polygon_api_key: str | None = Field(default=None)

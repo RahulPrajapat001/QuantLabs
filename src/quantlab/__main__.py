@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING
 import structlog
 import typer
 
+from quantlab.config import get_settings
+
 if TYPE_CHECKING:  # pandas is imported lazily inside commands to keep CLI startup fast
     import pandas as pd
 
@@ -1391,6 +1393,36 @@ def ml_search(
         typer.echo(result.render(research_log, top=top))
     finally:
         session.close()
+
+
+@app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind address."),
+    port: int = typer.Option(8000, "--port", help="Port to listen on."),
+    reload: bool = typer.Option(False, "--reload", help="Auto-reload on change."),
+) -> None:
+    """Serve the API — the sole data source for both frontends (PRD Module 12).
+
+    Binds to localhost by default. This API exposes an unauthenticated research
+    database, so making it reachable from the network is a deliberate act, not a
+    default.
+
+    Example::
+
+        quantlab serve --reload
+        # OpenAPI docs at http://127.0.0.1:8000/docs
+    """
+
+    import uvicorn
+
+    typer.echo(f"QuantLab API on http://{host}:{port}  (docs at /docs)")
+    uvicorn.run(
+        "quantlab.api.app:app",
+        host=host,
+        port=port,
+        reload=reload,
+        log_level=get_settings().log_level.lower(),
+    )
 
 
 def main() -> None:

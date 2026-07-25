@@ -60,6 +60,8 @@ reports = [
 # --- Tooling -----------------------------------------------------------------
 dev = [
     "pytest>=8.1",
+    # FastAPI's TestClient is a thin wrapper over httpx.
+    "httpx>=0.27",
     # The design-token generator emits Plotly templates; CI round-trips them
     # through Plotly's own validator (tests/design), so it needs plotly even
     # though the charting stack itself belongs to the api extra.
@@ -103,9 +105,25 @@ select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM", "TID", "RUF"]
 # mean, α/β for alpha and beta, Σ for the covariance matrix, δ/λ for shrinkage and
 # penalty coefficients. Also en dashes in the pre-registration parser and × in the
 # cost models' longhand arithmetic. All deliberate, none typos.
+# U+2212 MINUS SIGN is required by docs/DESIGN_SYSTEM.md §5: a hyphen is
+# narrower than a digit and breaks alignment in a tabular-figures column, which
+# is the whole point of the monospace-numbers rule. Also the em dash used for
+# null values.
 allowed-confusables = [
     "γ", "ρ", "σ", "μ", "α", "β", "δ", "λ", "φ", "ω", "Σ", "Φ",
-    "–", "×", "→", "≈", "≥", "≤",
+    "–", "—", "−", "×", "→", "≈", "≥", "≤",
+]
+
+# FastAPI's whole parameter API is function calls in argument defaults —
+# Query(), Path(), Depends(), Body(). B008 exists to catch accidental shared
+# mutable defaults, which these are not.
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Body",
+    "fastapi.Depends",
+    "fastapi.Path",
+    "fastapi.Query",
+    "fastapi.Security",
 ]
 
 [tool.ruff.lint.isort]
@@ -140,6 +158,13 @@ ignore_missing_imports = true
 module = ["joblib.*", "pyarrow.*"]
 ignore_missing_imports = true
 
+# WeasyPrint ships no py.typed marker. It is imported lazily inside
+# quantlab.reports.tearsheet and nowhere else, because importing it binds to
+# system libraries (Pango/Cairo) that a bare Windows host does not have.
+[[tool.mypy.overrides]]
+module = ["weasyprint.*"]
+ignore_missing_imports = true
+
 # XGBoost, LightGBM and SHAP ship no py.typed marker. All three are imported
 # lazily inside quantlab.ml_models (PRD Module 11) and nowhere else, so the
 # untyped surface is confined to the model registry and the SHAP explainer.
@@ -169,6 +194,12 @@ minversion = "8.0"
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
 pythonpath = ["src"]
+markers = [
+    # End-to-end runs that stream a real backtest through the engine. Kept
+    # marked so the fast suite stays fast, but they run in CI by default —
+    # the job lifecycle is exactly the part worth exercising for real.
+    "slow: exercises a full backtest through the API job queue",
+]
 
 # --- coverage ----------------------------------------------------------------
 [tool.coverage.run]

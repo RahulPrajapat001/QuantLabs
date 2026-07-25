@@ -43,7 +43,11 @@ data/features/
 node_modules/
 frontend/.next/
 frontend/out/
-frontend/src/lib/api/
+# frontend/src/lib/api/ is NOT ignored. It holds hand-written source (client.ts,
+# contract.test-d.ts) alongside a committed snapshot of the generated schema.
+# The snapshot is the point: tests/api/test_client_generation.py diffs it against
+# the running app, so a route added without regenerating the client fails CI. An
+# uncommitted snapshot has nothing to diff against.
 
 # --- OS / editors -----------------------------------------------------------
 .DS_Store
