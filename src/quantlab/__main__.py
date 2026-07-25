@@ -7,9 +7,13 @@ first (M1). See ``docs/PRD.md`` §5.
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 import structlog
 import typer
+
+if TYPE_CHECKING:  # pandas is imported lazily inside commands to keep CLI startup fast
+    import pandas as pd
 
 app = typer.Typer(help="QuantLab — quantitative research platform for Indian equities.")
 
@@ -340,6 +344,244 @@ def features_benchmark(
         profile_text = profile_build()
         path = write_performance_doc(result, profile_text)
         typer.echo(f"Wrote {path}")
+
+
+backtest_app = typer.Typer(help="Event-driven backtesting (PRD Modules 7 and 8).")
+app.add_typer(backtest_app, name="backtest")
+
+
+def _load_bars(
+    universe: str, start: date | None, end: date | None
+) -> tuple[pd.DataFrame, str]:
+    """Load a bar panel for a universe from the database.
+
+    Returns ``(frame, description)``. Raises ``typer.BadParameter`` when the
+    universe has no members or no price data — a backtest on an empty panel would
+    otherwise report a flat equity curve as though it were a result.
+    """
+
+    import pandas as pd
+    from sqlalchemy import select
+
+    from quantlab.db.models import OHLCVDaily
+    from quantlab.db.session import create_db_engine, create_session_factory
+    from quantlab.universe.membership import universe_as_of
+
+    engine = create_db_engine()
+    factory = create_session_factory(engine)
+    session = factory()
+    try:
+        as_of = end or date.today()
+        members = universe_as_of(session, universe, as_of)
+        if not members:
+            raise typer.BadParameter(
+                f"no point-in-time members for {universe} as of {as_of}. "
+                f"Build the universe first: quantlab universe build --index {universe}"
+            )
+        stmt = select(
+            OHLCVDaily.date,
+            OHLCVDaily.security_id,
+            OHLCVDaily.open,
+            OHLCVDaily.high,
+            OHLCVDaily.low,
+            OHLCVDaily.close,
+            OHLCVDaily.adj_close,
+            OHLCVDaily.volume,
+        ).where(OHLCVDaily.security_id.in_(sorted(members)))
+        if start is not None:
+            stmt = stmt.where(OHLCVDaily.date >= start)
+        if end is not None:
+            stmt = stmt.where(OHLCVDaily.date <= end)
+        rows = session.execute(stmt).all()
+    finally:
+        session.close()
+
+    if not rows:
+        raise typer.BadParameter(
+            f"no OHLCV rows for {universe} in the requested window. Ingest data "
+            "first: quantlab ingest --tickers ..."
+        )
+    frame = pd.DataFrame(
+        rows,
+        columns=[
+            "date",
+            "security_id",
+            "open",
+            "high",
+            "low",
+            "close",
+            "adj_close",
+            "volume",
+        ],
+    )
+    return frame, f"{len(members)} securities, {len(frame)} bars"
+
+
+@backtest_app.command("run")
+def backtest_run(
+    strategy: str = typer.Option(
+        ..., "--strategy", help="Strategy name (see 'quantlab backtest strategies')."
+    ),
+    universe: str = typer.Option("NIFTY500", "--universe", help="Index to trade."),
+    start: str = typer.Option(None, "--start", help="Inclusive start (YYYY-MM-DD)."),
+    end: str = typer.Option(None, "--end", help="Inclusive end (YYYY-MM-DD)."),
+    cost_model: str = typer.Option(
+        "IndianEquityCostModel",
+        "--cost-model",
+        help="ZeroCostModel | GenericBpsModel | IndianEquityCostModel.",
+    ),
+    capital: float = typer.Option(1_000_000.0, "--capital", help="Initial capital."),
+    hypothesis: str = typer.Option(
+        None,
+        "--hypothesis",
+        help="Pre-registered hypothesis id. Omit and the run is logged exploratory.",
+    ),
+) -> None:
+    """Run one backtest. Writes to ``research_log`` automatically.
+
+    Example::
+
+        quantlab backtest run --strategy momentum_12_1 --universe NIFTY500 \
+            --start 2015-01-01 --end 2021-12-31
+    """
+
+    from quantlab.backtesting.costs import default_cost_models
+    from quantlab.backtesting.data_handler import DataHandler
+    from quantlab.backtesting.engine import BacktestConfig, BacktestEngine
+    from quantlab.backtesting.portfolio import Portfolio, RiskLimits
+    from quantlab.db.session import create_db_engine, create_session_factory
+    from quantlab.research.log import ResearchLog
+    from quantlab.strategies import default_strategies
+
+    strategies = default_strategies()
+    if strategy not in strategies:
+        raise typer.BadParameter(
+            f"unknown strategy {strategy!r}; available: {', '.join(sorted(strategies))}"
+        )
+    models = default_cost_models()
+    if cost_model not in models:
+        raise typer.BadParameter(
+            f"unknown cost model {cost_model!r}; available: {', '.join(models)}"
+        )
+
+    start_date = _parse_date(start) if start else None
+    end_date = _parse_date(end) if end else None
+    bars, description = _load_bars(universe, start_date, end_date)
+    typer.echo(f"Loaded {description}.")
+
+    engine_db = create_db_engine()
+    session = create_session_factory(engine_db)()
+    try:
+        engine = BacktestEngine(
+            ResearchLog(session),
+            strategy=strategies[strategy],
+            data_handler=DataHandler(bars, start=start_date, end=end_date),
+            portfolio=Portfolio(
+                initial_capital=capital,
+                limits=RiskLimits(max_positions=10, max_position_weight=0.15),
+                target_positions=10,
+            ),
+            config=BacktestConfig(
+                initial_capital=capital,
+                cost_model=models[cost_model],
+                universe="point-in-time",
+                index_name=universe,
+                hypothesis_id=hypothesis,
+            ),
+        )
+        backtest = engine.run()
+        assert engine.metrics is not None
+        typer.echo("")
+        typer.echo(engine.metrics.render())
+        typer.echo("")
+        typer.echo(f"run_id: {backtest.run_id}")
+        typer.echo(
+            "The Sharpe above is UNDEFLATED. To report it: "
+            f"quantlab research deflate --run-id {backtest.run_id}"
+        )
+    finally:
+        session.close()
+
+
+@backtest_app.command("strategies")
+def backtest_strategies() -> None:
+    """List available strategies and their parameters."""
+
+    from quantlab.strategies import default_strategies
+
+    for name, strategy in sorted(default_strategies().items()):
+        parameters = ", ".join(f"{k}={v}" for k, v in strategy.parameters().items())
+        typer.echo(f"{name:22s} warmup={strategy.warmup:4d}  {parameters}")
+
+
+@backtest_app.command("cost-sensitivity")
+def backtest_cost_sensitivity(
+    universe: str = typer.Option("NIFTY500", "--universe", help="Index to trade."),
+    start: str = typer.Option(None, "--start", help="Inclusive start (YYYY-MM-DD)."),
+    end: str = typer.Option(None, "--end", help="Inclusive end (YYYY-MM-DD)."),
+    capital: float = typer.Option(1_000_000.0, "--capital", help="Initial capital."),
+    output: str = typer.Option(
+        None, "--output", help="Defaults to docs/research/cost_sensitivity.md."
+    ),
+) -> None:
+    """Run every strategy under all three cost models and write the report.
+
+    A required deliverable (PRD Module 8). Strategies that die under realistic
+    Indian costs are reported as findings, not dropped.
+
+    Example::
+
+        quantlab backtest cost-sensitivity --universe NIFTY500 --end 2021-12-31
+    """
+
+    from pathlib import Path
+
+    from quantlab.backtesting.cost_sensitivity import (
+        run_cost_sensitivity,
+        write_report,
+    )
+    from quantlab.db.session import create_db_engine, create_session_factory
+    from quantlab.research.log import ResearchLog
+    from quantlab.strategies import default_strategies
+
+    start_date = _parse_date(start) if start else None
+    end_date = _parse_date(end) if end else None
+    bars, description = _load_bars(universe, start_date, end_date)
+    typer.echo(f"Loaded {description}. Running every strategy x 3 cost models...")
+
+    engine_db = create_db_engine()
+    session = create_session_factory(engine_db)()
+    try:
+        report = run_cost_sensitivity(
+            ResearchLog(session),
+            default_strategies(),
+            bars,
+            initial_capital=capital,
+            index_name=universe,
+        )
+    finally:
+        session.close()
+
+    path = write_report(report, Path(output) if output else None)
+    typer.echo("")
+    typer.echo(report.pivot("sharpe").to_string())
+    typer.echo("")
+    survivors = report.survivors()
+    if survivors:
+        typer.echo(f"Survive realistic costs: {', '.join(survivors)}")
+    else:
+        typer.echo(
+            "No strategy clears the survival threshold under Indian statutory "
+            "costs. That is the finding, and it is reported as one."
+        )
+    if report.casualties():
+        typer.echo(f"Do not survive: {', '.join(report.casualties())}")
+    typer.echo("")
+    typer.echo(f"Wrote {path}")
+    typer.echo(
+        f"research_log trials now: {report.trials_after} — every Sharpe above must "
+        "be deflated against that count."
+    )
 
 
 research_app = typer.Typer(

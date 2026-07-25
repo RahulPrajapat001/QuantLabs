@@ -54,6 +54,12 @@ REQUIRED_COLUMNS = (
     "volume",
 )
 
+#: Optional columns honoured when present. ``circuit_hit`` is authoritative
+#: vendor data about a price-band day; without it the execution handler infers
+#: band hits from the price move (see
+#: :class:`quantlab.backtesting.execution.CircuitLimitPolicy`).
+OPTIONAL_COLUMNS = ("circuit_hit",)
+
 
 class LookAheadError(RuntimeError):
     """Raised when data beyond the current bar is requested."""
@@ -116,7 +122,8 @@ class DataHandler:
         if bars.empty:
             raise ValueError("bar panel is empty; there is nothing to stream")
 
-        frame = bars.loc[:, list(REQUIRED_COLUMNS)].copy()
+        keep = [*REQUIRED_COLUMNS, *(c for c in OPTIONAL_COLUMNS if c in bars.columns)]
+        frame = bars.loc[:, keep].copy()
         frame["date"] = pd.to_datetime(frame["date"])
         frame["security_id"] = frame["security_id"].astype(str)
 
@@ -371,6 +378,41 @@ class DataHandler:
         if rows.empty:
             return None
         return float(rows.iloc[-1])
+
+    def current_bar(self, security_id: str) -> pd.Series | None:
+        """The current date's bar for one security, or ``None`` if it did not trade.
+
+        A missing bar is normal — a security may be suspended, newly listed, or
+        already delisted — and the caller must handle it rather than assume a
+        price. The execution handler turns it into a ``NO_BAR`` rejection.
+        """
+
+        current = self.current_bars()
+        rows = current.loc[current["security_id"] == security_id]
+        if rows.empty:
+            return None
+        return rows.iloc[0]
+
+    def previous_close(self, security_id: str) -> float | None:
+        """The close *before* the current bar, or ``None`` if there isn't one.
+
+        Needed to detect a circuit-band hit, which is defined by the move from the
+        previous close. Strictly historical: it reads the bar before the cursor, so
+        it cannot leak the current or a future close.
+        """
+
+        if self._cursor < 1:
+            return None
+        prior = self._frame.iloc[: self._offsets[self._cursor]]
+        rows = prior.loc[prior["security_id"] == security_id, "close"]
+        if rows.empty:
+            return None
+        return float(rows.iloc[-1])
+
+    def traded_securities(self) -> set[str]:
+        """Every security with a bar at some point in the window."""
+
+        return {str(s) for s in self._frame["security_id"].unique()}
 
 
 def _unlocked() -> bool:

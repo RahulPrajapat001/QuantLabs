@@ -96,8 +96,9 @@ extend-exclude = [
 select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM", "TID", "RUF"]
 # The research-integrity modules quote Bailey & López de Prado's notation
 # directly (γ3 for skew, γ4 for kurtosis) and parse en dashes in the
-# pre-registration document's headings. Both are deliberate, not typos.
-allowed-confusables = ["γ", "–"]
+# pre-registration document's headings. The cost models write their statutory
+# arithmetic out longhand (0.1% × turnover). All deliberate, none typos.
+allowed-confusables = ["γ", "–", "×", "→"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["quantlab"]
