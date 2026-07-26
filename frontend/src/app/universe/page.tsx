@@ -277,7 +277,13 @@ function ConstituentCountChart({
         data={data}
         layout={{
           xaxis: { showgrid: false, tickformat: "%Y-%m-%d" },
-          yaxis: { title: { text: "constituents" }, rangemode: "tozero" },
+          yaxis: {
+            title: { text: "constituents" },
+            // Explicit headroom: `rangemode: "tozero"` pins the floor but lets
+            // the top land exactly on the series, which drew the step line along
+            // the upper edge of the plot with no air above it.
+            range: [0, Math.max(...values, 1) * 1.15],
+          },
           hovermode: "x unified",
         }}
         height={280}

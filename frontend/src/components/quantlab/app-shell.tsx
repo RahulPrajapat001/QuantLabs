@@ -92,10 +92,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {/* Page-registered controls portal in here (see SidebarPortal). */}
-        <div id={SIDEBAR_HOST_ID} className="min-w-0 overflow-y-auto" />
+        {/*
+         * Page-registered controls portal in here (see SidebarPortal).
+         *
+         * `flex-1 min-h-0` is load-bearing: without it this box sizes to its
+         * content and gets squeezed by the nav above and the footer below, so a
+         * page with several controls pushes its submit button out of reach. The
+         * `min-h-0` is what lets a flex child actually shrink and scroll.
+         */}
+        <div id={SIDEBAR_HOST_ID} className="min-h-0 min-w-0 flex-1 overflow-y-auto" />
 
-        <div className="mt-auto flex flex-col gap-2 border-t border-border pt-2">
+        <div className="flex shrink-0 flex-col gap-2 border-t border-border pt-2">
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}

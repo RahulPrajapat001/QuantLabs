@@ -203,7 +203,10 @@ def _to_out(
         ),
         n_assets=Num.count(result.n_assets),
         holdings=holdings,
-        volatility=Num.percent(result.volatility, decimals=2),
+        # Unsigned, like /risk and /backtests: volatility is a magnitude, and
+        # `Num.percent` renders it "+6.43%" — a sign on something that cannot be
+        # negative.
+        volatility=Num.share(result.volatility),
         expected_return=Num.percent(result.expected_return),
         ex_ante_sharpe=ReferenceRatio.ex_ante_sharpe(result.sharpe),
         turnover=Num.share(result.turnover),

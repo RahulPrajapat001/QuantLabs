@@ -343,10 +343,11 @@ function RollingBetaChart({
   return (
     <ChartCard
       title="Rolling beta"
-      caption={
-        data?.interpretation ??
-        "Beta against the equal-weighted index, over a rolling window."
-      }
+      caption="Beta against the equal-weighted index, over a rolling window."
+      // The API's interpretation is a multi-line report; rendering it as a
+      // caption collapsed the newlines into a run-on sentence. It goes below the
+      // chart with its line breaks intact.
+      footnote={data?.interpretation}
       height={300}
       loading={loading}
       error={error}

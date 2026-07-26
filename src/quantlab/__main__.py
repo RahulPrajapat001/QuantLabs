@@ -1145,7 +1145,7 @@ def _load_ml_dataset(
         if panel.empty:
             raise typer.BadParameter(
                 "the feature dataset is empty. Build it first: "
-                f"quantlab features build --index {universe}"
+                f"quantlab features build --universe {universe}"
             )
         merged = panel.merge(
             prices[["date", "security_id", "adj_close"]],

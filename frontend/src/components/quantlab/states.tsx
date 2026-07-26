@@ -9,6 +9,13 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+/**
+ * `height` reserves the box the real content will occupy so nothing moves when
+ * data lands. The *message* inside is pinned to the top rather than centred,
+ * and capped in width: a 420px-tall chart slot with its "no data" text floating
+ * dead-centre turns absence into the loudest thing on the screen. Data should be
+ * the focus when it arrives, and the placeholder should not compete before then.
+ */
 function Frame({
   height,
   className,
@@ -20,11 +27,9 @@ function Frame({
 }) {
   return (
     <div
-      // Same box the content would have occupied: swapping a state for the real
-      // thing must not move the page.
       style={height ? { height } : undefined}
       className={cn(
-        "flex flex-col items-center justify-center gap-2 rounded border border-dashed border-border p-4 text-center",
+        "flex flex-col items-start gap-1 rounded border border-dashed border-border px-3 py-2",
         className,
       )}
     >
@@ -51,6 +56,20 @@ export function EmptyState({
       {hint && <p className="max-w-prose text-xs text-text-muted">{hint}</p>}
     </Frame>
   );
+}
+
+/**
+ * One line, no box. For a slot inside a card that already has a border — a
+ * second dashed rectangle inside a bordered card is two frames around nothing.
+ */
+export function EmptyLine({
+  message,
+  className,
+}: {
+  message: string;
+  className?: string;
+}) {
+  return <p className={cn("text-sm text-text-muted", className)}>{message}</p>;
 }
 
 export function ErrorState({

@@ -225,13 +225,28 @@ def read_feature_panel(
     securities: Sequence[str] | None = None,
     columns: Sequence[str] | None = None,
 ) -> pd.DataFrame:
-    """Read the feature dataset back, pushing date/security filters to parquet."""
+    """Read the feature dataset back, pushing date/security filters to parquet.
+
+    Raises :class:`FileNotFoundError` when the dataset has not been built. That
+    includes the case where the directory *exists but is empty*, which is the
+    normal state of a fresh checkout: ``features_dir`` is created eagerly, so an
+    "is there a directory" check is not the same question as "is there data".
+    Without this, pyarrow raises ``ArrowInvalid: No match for FieldRef.Name(date)``
+    from inside the filter — which callers cannot reasonably be expected to
+    recognise, and which reached the API as a 500 where a 404 telling the
+    researcher to run ``quantlab features build`` was intended.
+    """
 
     import pyarrow.compute as pc
     import pyarrow.dataset as ds
 
     settings = get_settings()
     root = features_dir or settings.features_dir
+    if not root.exists() or not any(root.rglob("*.parquet")):
+        raise FileNotFoundError(
+            f"no feature parquet files under {root}. "
+            "Build the panel first: quantlab features build --universe <name>"
+        )
     dataset = ds.dataset(str(root), format="parquet", partitioning="hive")
 
     predicate = None

@@ -373,6 +373,7 @@ function EquityCurveCard({ curve }: { curve: EquityPoint[] }) {
     >
       <PriceChart
         series={series}
+        unit="currency"
         drawdown={drawdown}
         height={360}
         ariaLabel="Strategy equity curve with drawdown"

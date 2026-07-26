@@ -116,11 +116,11 @@ export default function FeatureExplorerPage() {
             <div className="flex flex-col gap-1">
               <CardTitle>Catalog</CardTitle>
               <p className="text-sm text-text-secondary">
-                Descriptions come from each compute function&apos;s docstring —
-                one copy, so it cannot drift from the code.
+                Declared in the registry beside each feature&apos;s lookback and
+                dependencies, so a family built in a loop describes itself.
               </p>
             </div>
-            <span className="ql-num text-xs text-text-muted">
+            <span className="ql-num whitespace-nowrap text-xs text-text-muted">
               {catalog.data?.returned.formatted ?? "—"} of{" "}
               {catalog.data?.total.formatted ?? "—"}
             </span>
@@ -242,7 +242,7 @@ export default function FeatureExplorerPage() {
             loading={panel.loading}
             error={panel.error}
             onRetry={panel.refetch}
-            lookback={selected?.lookback.formatted ?? null}
+            lookbackBars={selected?.lookback.value ?? null}
           />
         </div>
       </div>
@@ -257,7 +257,7 @@ function FeatureChart({
   loading,
   error,
   onRetry,
-  lookback,
+  lookbackBars,
 }: {
   feature: string | null;
   security: string | null;
@@ -265,7 +265,7 @@ function FeatureChart({
   loading: boolean;
   error: string | null;
   onRetry: () => void;
-  lookback: string | null;
+  lookbackBars: number | null;
 }) {
   const theme = useTheme();
 
@@ -301,9 +301,9 @@ function FeatureChart({
     <ChartCard
       title={feature ? `${feature} on ${security ?? "—"}` : "Feature series"}
       caption={
-        lookback
-          ? `The leading gap is the ${lookback}-bar warm-up: the feature has no defined value until it has that much history.`
-          : undefined
+        lookbackBars && lookbackBars > 0
+          ? `The leading gap is the ${lookbackBars}-bar warm-up: the feature has no defined value until it has that much history.`
+          : "A cross-sectional feature needs no history of its own — only its input's."
       }
       height={300}
       loading={loading}

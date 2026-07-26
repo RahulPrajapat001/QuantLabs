@@ -326,7 +326,19 @@ function CompletenessHeatmap({
         },
       ],
       layout: {
-        xaxis: { showgrid: false, type: "category" as const },
+        // Every third month is labelled. With ~42 categories all of them
+        // collide into unreadable diagonal mush; the cells still carry the exact
+        // month in the hover and in the table view.
+        xaxis: {
+          showgrid: false,
+          type: "category" as const,
+          tickmode: "auto" as const,
+          nticks: 14,
+          tickangle: -45,
+          // Rotated labels need room or they are clipped mid-string — "2016-01"
+          // rendered as "16-01", which looks like a different date entirely.
+          automargin: true,
+        },
         yaxis: { showgrid: false, type: "category" as const, automargin: true },
       },
     };

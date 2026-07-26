@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ChartCard } from "@/components/charts/chart-card";
 import { PlotlyChart } from "@/components/charts/plotly-chart";
@@ -28,7 +28,11 @@ const COVARIANCE = ["ledoit_wolf", "sample", "oas"] as const;
 
 export default function PortfolioPage() {
   const [index, setIndex] = useState("NIFTY500");
-  const [method, setMethod] = useState("max_sharpe");
+  // Null until the optimiser list arrives. A hardcoded default is how this page
+  // shipped an error on first load: the guessed name `max_sharpe` is spelled
+  // `maximum_sharpe` server-side, so the very first request 422'd. The API owns
+  // the vocabulary; the UI does not get to assume it.
+  const [method, setMethod] = useState<string | null>(null);
   const [covariance, setCovariance] = useState<string>(COVARIANCE[0]);
   const [lookback, setLookback] = useState(252);
   const [maxWeight, setMaxWeight] = useState(0.15);
@@ -37,16 +41,25 @@ export default function PortfolioPage() {
 
   const methods = useApi(() => api().portfolioMethods(), []);
 
+  // Adopt the first method the server offers, once.
+  useEffect(() => {
+    if (method === null && methods.data?.length) {
+      setMethod(methods.data[0] ?? null);
+    }
+  }, [method, methods.data]);
+
   const request = {
     index_name: index,
-    method,
+    method: method ?? "",
     covariance,
     lookback,
     max_weight: maxWeight,
     long_only: longOnly,
   };
 
-  const result = useApi(() => api().optimise(request), [submitted]);
+  const result = useApi(() => api().optimise(request), [submitted, method], {
+    enabled: method !== null,
+  });
 
   /**
    * The frontier is built by asking the optimiser for several methods over the
@@ -78,7 +91,7 @@ export default function PortfolioPage() {
       );
     },
     [submitted, methods.data],
-    { enabled: Boolean(methods.data?.length) },
+    { enabled: Boolean(methods.data?.length) && method !== null },
   );
 
   return (
@@ -98,11 +111,11 @@ export default function PortfolioPage() {
           {(id) => (
             <select
               id={id}
-              value={method}
+              value={method ?? ""}
               onChange={(event) => setMethod(event.target.value)}
               className="h-6 w-full rounded border border-border bg-surface px-2 text-base text-text-primary"
             >
-              {(methods.data ?? [method]).map((name) => (
+              {(methods.data ?? []).map((name) => (
                 <option key={name} value={name}>
                   {name}
                 </option>
@@ -218,7 +231,7 @@ export default function PortfolioPage() {
       <div className="grid gap-2 lg:grid-cols-2">
         <EfficientFrontier
           points={frontier.data ?? []}
-          selected={method}
+          selected={method ?? ""}
           loading={frontier.loading}
           error={frontier.error}
           onRetry={frontier.refetch}
@@ -264,14 +277,15 @@ function EfficientFrontier({
     return [
       {
         type: "scatter" as const,
-        mode: "text+markers" as const,
+        mode: "markers" as const,
         x: others.map((point) => point.risk),
         y: others.map((point) => point.ret),
         text: others.map((point) => point.method),
-        textposition: "top center" as const,
-        // Direct labels rather than a legend — the FT convention, and it removes
-        // the round trip between a key and a mark.
-        textfont: { size: 11, color: tokens.textSecondary },
+        // Markers only. Direct labels are the default (§6) but they are
+        // "impossible" here in the sense §6 allows for: on a short window
+        // several optimisers land within a pixel of each other and their labels
+        // overlap into one unreadable blob. The selected point keeps its label,
+        // hover names any point, and the table view carries all of them.
         marker: { size: 8, color: tokens.series[0] },
         hovertemplate: "%{text}<br>risk %{x:.2%}<br>return %{y:.2%}<extra></extra>",
       },
@@ -303,9 +317,16 @@ function EfficientFrontier({
       loading={loading}
       error={error}
       onRetry={onRetry}
-      empty={points.length === 0}
-      emptyMessage="No optimiser produced a solution on this window."
-      emptyHint="Try a longer lookback or a larger max weight."
+      // Fewer than two points is not a frontier: Plotly auto-pads a lone dot to
+      // a ±50% axis range, which looks like a broken chart rather than a thin
+      // result. Say what happened instead.
+      empty={points.length < 2}
+      emptyMessage={
+        points.length === 1
+          ? "Only one optimiser produced a solution — not enough for a frontier."
+          : "No optimiser produced a solution on this window."
+      }
+      emptyHint="Most optimisers need a positive expected return to solve. Try a longer lookback or a larger max weight."
       table={{
         columns: ["Method", "Risk", "Return"],
         rows: points.map((point) => [

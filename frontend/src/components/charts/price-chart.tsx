@@ -33,6 +33,12 @@ export interface Point {
 
 export interface PriceChartProps {
   series: Point[];
+  /**
+   * Axis unit. `currency` for equity and price, `ratio` for an index or a
+   * multiple. Drives the tick format, which otherwise prints raw floats like
+   * `1107554.11`.
+   */
+  unit?: "currency" | "ratio";
   /** Muted, dashed, always grey. It is context, not a competitor. */
   benchmark?: Point[];
   /**
@@ -50,8 +56,27 @@ function toTime(iso: string): UTCTimestamp {
   return (Date.parse(`${iso}T00:00:00Z`) / 1000) as UTCTimestamp;
 }
 
+/**
+ * Axis ticks per DESIGN_SYSTEM.md §6: currency thousands-separated, 0dp.
+ *
+ * This is the one place the frontend formats a number, and it is sanctioned:
+ * an axis tick has no corresponding `Num` from the API, and §6 fixes the format
+ * explicitly. Anything with a `Num` still renders `formatted`.
+ */
+const CURRENCY_TICK = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
+
+const RATIO_TICK = new Intl.NumberFormat("en-IN", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 export function PriceChart({
   series,
+  unit = "currency",
   benchmark,
   drawdown,
   height,
@@ -74,6 +99,12 @@ export function PriceChart({
         textColor: tokens.textSecondary,
         fontSize: 11,
         fontFamily: '"JetBrains Mono", "SFMono-Regular", "Menlo", monospace',
+      },
+      localization: {
+        priceFormatter: (value: number) =>
+          unit === "currency"
+            ? CURRENCY_TICK.format(value)
+            : RATIO_TICK.format(value),
       },
       grid: {
         // A subtle horizontal grid only. A vertical grid on a time axis adds
@@ -112,7 +143,11 @@ export function PriceChart({
         color: tokens.series[0],
         lineWidth: 2,
         priceLineVisible: false,
-        lastValueVisible: true,
+        // Off deliberately: the badge is filled with the series colour and puts
+        // light text on it, which fails both the contrast rule and "series
+        // labels wear text tokens, not the series colour" (§6). The neutral
+        // crosshair readout carries the value.
+        lastValueVisible: false,
       });
       line.setData(series.map((p) => ({ time: toTime(p.date) as Time, value: p.value })));
     }
@@ -151,13 +186,23 @@ export function PriceChart({
       });
     }
 
-    instance.timeScale().fitContent();
+    // `fitContent` against a zero-width canvas leaves the series compressed
+    // into a sliver of the plot. The chart is created before the browser has
+    // laid the container out, so fit on the next frame and again whenever the
+    // width changes.
+    const fit = () => instance.timeScale().fitContent();
+    fit();
+    const frame = requestAnimationFrame(fit);
+    const observer = new ResizeObserver(fit);
+    observer.observe(node.current);
 
     return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
       instance.remove();
       chart.current = null;
     };
-  }, [series, benchmark, drawdown, candles, height, theme]);
+  }, [series, unit, benchmark, drawdown, candles, height, theme]);
 
   return (
     <div

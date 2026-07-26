@@ -112,7 +112,7 @@ def evaluate(request: EvaluationRequest, session: SessionDep) -> EvaluationOut:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(
                 "the feature dataset has not been built. Run: "
-                f"quantlab features build --index {request.index_name}"
+                f"quantlab features build --universe {request.index_name}"
             ),
         ) from exc
     if panel.empty:
@@ -123,6 +123,17 @@ def evaluate(request: EvaluationRequest, session: SessionDep) -> EvaluationOut:
 
     dates = sorted({d.date() for d in pd.to_datetime(panel["date"])})
     universe = universe_by_date(session, request.index_name, dates)
+
+    # The two loaders disagree on the dtype of `date` and this is where they
+    # meet: `read_feature_panel` returns datetime64 (parquet round-trip) while
+    # `load_price_panel` yields Python date objects straight from SQLAlchemy
+    # rows. `evaluate_factor` inner-joins them on `date`, and pandas refuses to
+    # merge datetime64 against object — so without this every evaluation raised
+    # ValueError and the endpoint answered 500. Normalising to datetime64 is safe
+    # for the universe lookup because `factors.protocol` narrows each date with
+    # `_to_date` before indexing the mapping.
+    panel = panel.assign(date=pd.to_datetime(panel["date"]))
+    prices = prices.assign(date=pd.to_datetime(prices["date"]))
 
     # allow_holdout is deliberately absent: a factor decision informed by holdout
     # data would poison every strategy built on it, and the API offers no switch.

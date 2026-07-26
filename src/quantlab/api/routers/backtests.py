@@ -347,7 +347,10 @@ def _to_result(
         benchmark_sharpe=ReferenceRatio.benchmark_sharpe(metrics.benchmark_sharpe),
         total_return=Num.percent(metrics.total_return),
         annual_return=Num.percent(metrics.annual_return),
-        annual_volatility=Num.percent(metrics.annual_volatility, decimals=2),
+        # Unsigned: volatility is a magnitude, so `Num.percent` would render it
+        # as "+3.10%" — a sign on a quantity that cannot be negative. This also
+        # matches how /risk formats volatility, so the two pages agree.
+        annual_volatility=Num.share(metrics.annual_volatility),
         drawdown=DrawdownOut(
             max_drawdown=Num.percent(-abs(metrics.drawdown.max_drawdown)),
             peak_on=metrics.drawdown.peak_date,

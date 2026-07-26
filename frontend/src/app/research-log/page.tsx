@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { MetricCard, MetricRow } from "@/components/quantlab/metric-card";
 import { PageHeader } from "@/components/quantlab/page-header";
+import { ProvenanceMark } from "@/components/quantlab/provenance-mark";
 import { Control, SidebarPortal } from "@/components/quantlab/sidebar-context";
 import { SplitBadge } from "@/components/quantlab/split-badge";
 import { EmptyState, ErrorState } from "@/components/quantlab/states";
@@ -256,17 +257,10 @@ export default function ResearchLogPage() {
                         <SplitBadge badge={run.badge} />
                       </TableCell>
                       <TableCell>
-                        {run.exploratory ? (
-                          <span className="border-l border-dashed border-border-strong pl-2 text-xs uppercase tracking-wide text-text-muted">
-                            Exploratory
-                          </span>
-                        ) : (
-                          <span className="border-l border-solid border-border-strong pl-2 text-xs text-text-secondary">
-                            <span className="ql-num text-text-primary">
-                              {run.hypothesis_id ?? "—"}
-                            </span>
-                          </span>
-                        )}
+                        <ProvenanceMark
+                          exploratory={run.exploratory}
+                          hypothesisId={run.hypothesis_id}
+                        />
                       </TableCell>
                       <TableCell
                         className={cn(

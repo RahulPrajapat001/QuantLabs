@@ -140,7 +140,9 @@ export default function FactorResearchPage() {
           value={
             result?.pearson_ic[0]?.mean_ic ?? { value: null, formatted: "—" }
           }
-          benchmark={`primary horizon ${result?.primary_horizon ?? "—"}d`}
+          benchmark={
+            result ? `primary horizon ${result.primary_horizon}d` : "primary horizon"
+          }
           signed
         />
         <MetricCard

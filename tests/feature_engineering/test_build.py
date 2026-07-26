@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from quantlab.feature_engineering.build import (
     build_feature_panel,
@@ -113,6 +114,28 @@ def test_parquet_roundtrip_with_predicate_pushdown(tmp_path: Path) -> None:
     assert set(back["security_id"].unique()) == {"SEC-0001"}
     assert (pd.to_datetime(back["date"]) >= pd.Timestamp("2016-01-01")).all()
     assert set(back.columns) == {"security_id", "date", "rsi_14"}
+
+
+def test_reading_an_unbuilt_panel_raises_file_not_found(tmp_path: Path) -> None:
+    """An empty features directory is "not built", not a corrupt dataset.
+
+    ``features_dir`` is created eagerly, so "the directory exists" and "there is
+    data" are different questions. Answering the first was letting pyarrow raise
+    ``ArrowInvalid: No match for FieldRef.Name(date)`` from inside the predicate
+    — which callers cannot recognise, and which surfaced at the API as a 500
+    where the actionable 404 telling the researcher to build the panel was
+    intended.
+    """
+
+    empty = tmp_path / "features"
+    empty.mkdir()
+
+    with pytest.raises(FileNotFoundError, match="features build"):
+        read_feature_panel(features_dir=empty)
+
+    # And the same for a directory that does not exist at all.
+    with pytest.raises(FileNotFoundError):
+        read_feature_panel(features_dir=tmp_path / "absent")
 
 
 def test_shared_intermediate_computed_once() -> None:

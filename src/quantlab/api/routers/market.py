@@ -155,7 +155,7 @@ def features(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(
                 "the feature dataset has not been built. Run: "
-                "quantlab features build --index NIFTY500"
+                "quantlab features build --universe NIFTY500"
             ),
         ) from exc
 
@@ -164,7 +164,7 @@ def features(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(
                 "no feature rows match that query. If the dataset has not been "
-                "built yet, run: quantlab features build --index NIFTY500"
+                "built yet, run: quantlab features build --universe NIFTY500"
             ),
         )
 

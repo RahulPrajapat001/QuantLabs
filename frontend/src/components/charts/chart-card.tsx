@@ -55,6 +55,12 @@ export interface ChartCardProps {
   table?: TableView;
   /** Rendered in the header, right-aligned: a badge, a toggle, a count. */
   actions?: React.ReactNode;
+  /**
+   * A multi-line report from the API, rendered below the chart with its line
+   * breaks intact. Captions are one sentence; putting a rendered report in one
+   * collapses its newlines into a run-on.
+   */
+  footnote?: string;
   children: React.ReactNode;
   className?: string;
 }
@@ -71,6 +77,7 @@ export function ChartCard({
   onRetry,
   table,
   actions,
+  footnote,
   children,
   className,
 }: ChartCardProps) {
@@ -86,7 +93,9 @@ export function ChartCard({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {actions}
+          {/* A legend or a summary describes data; with none, it describes
+              nothing and just adds ink. */}
+          {!empty && !loading && !error && actions}
           {table && !loading && !error && !empty && (
             <button
               type="button"
@@ -106,7 +115,14 @@ export function ChartCard({
         ) : error ? (
           <ErrorState message={error} onRetry={onRetry} height={height} />
         ) : empty ? (
-          <EmptyState message={emptyMessage} hint={emptyHint} height={height} />
+          /*
+           * Deliberately NOT `height={height}`. The no-layout-shift rule governs
+           * loading → data, and the skeleton above reserves the full box for
+           * that. An empty state is terminal: nothing arrives until the reader
+           * changes a control, so reserving 420px to say "no data" makes absence
+           * the largest element on the page.
+           */
+          <EmptyState message={emptyMessage} hint={emptyHint} />
         ) : view === "table" && table ? (
           <div className="overflow-auto" style={{ height }}>
             <Table>
@@ -134,6 +150,12 @@ export function ChartCard({
           </div>
         ) : (
           <div className={cn("animate-ql-fade-in")}>{children}</div>
+        )}
+
+        {footnote && !loading && !error && !empty && (
+          <p className="mt-2 max-w-prose whitespace-pre-line border-t border-border pt-2 text-xs text-text-muted">
+            {footnote}
+          </p>
         )}
       </CardContent>
     </Card>
