@@ -14,23 +14,23 @@ The entry points:
   This is what a refresh should call.
 * :func:`latest_report` — read the most recent persisted run back out.
 
-**A clean run persists nothing.** Findings are the only rows written, so a
-database with no defects is indistinguishable from one that was never validated,
-and :func:`latest_report` returns ``None`` for both. Callers that need to tell
-those apart need run-level rows (a ``data_quality_runs`` table); for now the API
-falls back to computing on demand, which is correct either way.
+**A clean run leaves evidence.** :func:`validate` writes a row to
+``data_quality_runs`` unconditionally, so "validated, nothing wrong" and "never
+validated" are distinguishable. That is what lets :func:`latest_report` serve a
+clean run instead of falling back to on-demand computation forever, and what lets
+:func:`compare_to_previous` detect a clean → dirty regression.
 
 Not yet built from Module 3: calendar gaps against the ``exchange_calendars`` NSE
 calendar, duplicate-date detection, MAD-based outliers, split-ratio matching,
-circuit-limit days, the HTML ``DataQualityReport`` rendering with a completeness
-percentage, and the ``--fail-on-regression`` guard. The checks below are the ones
-that existed; this change gives them somewhere to live and a table to write to,
-it does not complete the module.
+circuit-limit days, and the HTML ``DataQualityReport`` rendering with a
+completeness percentage. The ``--fail-on-regression`` guard *is* built — see
+:func:`compare_to_previous`, which the nightly workflow depends on.
 """
 
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import date, datetime
 from enum import StrEnum
 
@@ -43,6 +43,7 @@ from sqlalchemy.orm import Session
 from quantlab.db.models import (
     CorporateAction,
     DataQualityFinding,
+    DataQualityRun,
     OHLCVDaily,
     Security,
     UnresolvedMembershipChange,
@@ -54,7 +55,9 @@ __all__ = [
     "STALE_RUN",
     "DataQualityReport",
     "Finding",
+    "Regression",
     "Severity",
+    "compare_to_previous",
     "latest_report",
     "run_checks",
     "validate",
@@ -447,6 +450,34 @@ def validate(
     report = run_checks(session, security_id=security_id, start=start, end=end)
     run_id = uuid.uuid4().hex
 
+    by_severity: dict[str, int] = {}
+    for finding in report.findings:
+        by_severity[str(finding.severity)] = (
+            by_severity.get(str(finding.severity), 0) + 1
+        )
+
+    scope_parts = [
+        f"security_id={security_id}" if security_id else None,
+        f"start={start.isoformat()}" if start else None,
+        f"end={end.isoformat()}" if end else None,
+    ]
+    scope = ", ".join(p for p in scope_parts if p) or None
+
+    # The run row is written unconditionally — that is the whole point of the
+    # table. A clean run must leave evidence, or the regression guard cannot
+    # compare against it and the API cannot tell "clean" from "never ran".
+    session.add(
+        DataQualityRun(
+            run_id=run_id,
+            rows_examined=report.rows_examined,
+            checks_run=list(report.checks_run),
+            error_count=by_severity.get("error", 0),
+            warning_count=by_severity.get("warning", 0),
+            info_count=by_severity.get("info", 0),
+            scope=scope,
+        )
+    )
+
     session.add_all(
         DataQualityFinding(
             run_id=run_id,
@@ -472,6 +503,109 @@ def validate(
     return report.model_copy(update={"run_id": run_id})
 
 
+@dataclass(frozen=True, slots=True)
+class Regression:
+    """A comparison of one run's severity counts against the previous run's.
+
+    "Worse" is defined per severity, not on a total: ten new `info` findings and
+    one new `error` are not the same event, and a total would let the error hide
+    behind a wash. Any severity increasing is a regression.
+    """
+
+    previous_run_id: str | None
+    current: dict[str, int]
+    previous: dict[str, int]
+
+    @property
+    def worsened(self) -> dict[str, tuple[int, int]]:
+        """Severities that increased, as ``{severity: (before, after)}``.
+
+        Empty when there is no previous run. Without that guard a first run on a
+        database that already has findings compares against ``{}``, reads every
+        count as an increase, and fails — which is the kind of false positive that
+        gets a CI gate switched off in week one.
+        """
+
+        if self.previous_run_id is None:
+            return {}
+        return {
+            str(severity): (
+                self.previous.get(str(severity), 0),
+                self.current.get(str(severity), 0),
+            )
+            for severity in (Severity.ERROR, Severity.WARNING, Severity.INFO)
+            if self.current.get(str(severity), 0) > self.previous.get(str(severity), 0)
+        }
+
+    @property
+    def is_regression(self) -> bool:
+        return bool(self.worsened)
+
+    def render(self) -> str:
+        if self.previous_run_id is None:
+            return (
+                "No previous validation run to compare against — this is the "
+                "baseline. Nothing can have regressed."
+            )
+        if not self.is_regression:
+            errors_before = self.previous.get("error", 0)
+            errors_after = self.current.get("error", 0)
+            warn_before = self.previous.get("warning", 0)
+            warn_after = self.current.get("warning", 0)
+            return (
+                f"No regression against run {self.previous_run_id[:8]}: "
+                f"errors {errors_before}→{errors_after}, "
+                f"warnings {warn_before}→{warn_after}."
+            )
+        lines = [f"REGRESSION against run {self.previous_run_id[:8]}:"]
+        lines += [
+            f"  {severity}: {before} → {after}"
+            for severity, (before, after) in self.worsened.items()
+        ]
+        return "\n".join(lines)
+
+
+def _run_counts(run: DataQualityRun) -> dict[str, int]:
+    return {
+        "error": run.error_count,
+        "warning": run.warning_count,
+        "info": run.info_count,
+    }
+
+
+def compare_to_previous(session: Session, run_id: str) -> Regression:
+    """Compare ``run_id``'s severity counts against the run before it.
+
+    Reads ``data_quality_runs``, not ``data_quality_findings``. That distinction
+    is the whole reason the run table exists: a clean run writes no findings, so
+    comparing findings made a clean baseline invisible and let 0 errors → 5 errors
+    pass as "first run, nothing to compare".
+
+    A genuinely first run is the baseline and is not a regression — a fresh
+    database must not fail the nightly job.
+    """
+
+    current = session.get(DataQualityRun, run_id)
+    if current is None:
+        raise ValueError(
+            f"no data_quality_runs row for {run_id!r}; compare_to_previous needs a "
+            "persisted run (validate() writes one, run_checks() does not)"
+        )
+
+    previous = session.scalars(
+        select(DataQualityRun)
+        .where(DataQualityRun.run_id != run_id)
+        .order_by(DataQualityRun.created_at.desc())
+        .limit(1)
+    ).first()
+
+    return Regression(
+        previous_run_id=previous.run_id if previous else None,
+        current=_run_counts(current),
+        previous=_run_counts(previous) if previous else {},
+    )
+
+
 def latest_report(
     session: Session,
     *,
@@ -485,13 +619,16 @@ def latest_report(
     case of a database with no defects — see the module docstring.
     """
 
-    run_id = session.scalar(
-        select(DataQualityFinding.run_id)
-        .order_by(DataQualityFinding.created_at.desc(), DataQualityFinding.id.desc())
-        .limit(1)
-    )
-    if run_id is None:
+    # The run table, not the findings table: a clean run writes no findings, and
+    # reading findings here is what made a validated-and-clean database look
+    # identical to a never-validated one, so the API fell back to computing on
+    # demand forever.
+    run = session.scalars(
+        select(DataQualityRun).order_by(DataQualityRun.created_at.desc()).limit(1)
+    ).first()
+    if run is None:
         return None
+    run_id = run.run_id
 
     # A NULL security_id or date is not "outside the filter" — it is a finding
     # that indicts a whole series or a filing rather than one row, and those stay
@@ -519,16 +656,11 @@ def latest_report(
         # The run exists but nothing in it matches the filter. An empty report is
         # the honest answer; falling back to on-demand would silently answer a
         # different question.
-        meta = session.execute(
-            select(
-                DataQualityFinding.rows_examined, DataQualityFinding.created_at
-            ).where(DataQualityFinding.run_id == run_id)
-        ).first()
         return _report(
             [],
-            rows_examined=meta.rows_examined if meta else 0,
+            rows_examined=run.rows_examined,
             run_id=run_id,
-            generated_at=meta.created_at if meta else None,
+            generated_at=run.created_at,
         )
 
     return _report(

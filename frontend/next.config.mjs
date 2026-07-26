@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Emits .next/standalone: the server plus only the node_modules actually
+  // imported, so the production image needs no build toolchain. Required by
+  // frontend/Dockerfile.
+  output: "standalone",
   // The design tokens and Plotly templates live outside frontend/ so the
   // Streamlit dashboard consumes the same files. Next needs to be told it may
   // trace above its own root. (Top-level in 15; still under `experimental` in 14.)

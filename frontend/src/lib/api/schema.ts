@@ -147,7 +147,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Liveness probe. */
+        /**
+         * Liveness probe.
+         * @description Process liveness. Deliberately touches no dependency — see module docs.
+         */
         get: operations["health_health_get"];
         put?: never;
         post?: never;
@@ -256,6 +259,26 @@ export interface paths {
         };
         /** Persisted findings, or the checks run now. */
         get: operations["findings_quality_findings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Readiness, incl. data freshness.
+         * @description Readiness. Returns 503 when any check fails, so a load balancer can act.
+         */
+        get: operations["ready_ready_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -772,6 +795,15 @@ export interface components {
              */
             window: number;
         };
+        /** Check */
+        Check: {
+            /** Detail */
+            detail: string;
+            /** Name */
+            name: string;
+            /** Ok */
+            ok: boolean;
+        };
         /**
          * CompletenessCell
          * @description One security-month: bars present against NSE sessions expected.
@@ -1074,6 +1106,13 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** Health */
+        Health: {
+            /** Status */
+            status: string;
+            /** Version */
+            version: string;
         };
         /** Holding */
         Holding: {
@@ -1396,6 +1435,19 @@ export interface components {
              * @description The validation run these findings came from. Null on demand.
              */
             run_id?: string | null;
+        };
+        /** Ready */
+        Ready: {
+            /** Checks */
+            checks: components["schemas"]["Check"][];
+            /** Data Age Days */
+            data_age_days?: number | null;
+            /** Latest Bar */
+            latest_bar?: string | null;
+            /** Ready */
+            ready: boolean;
+            /** Version */
+            version: string;
         };
         /**
          * ReferenceRatio
@@ -2096,9 +2148,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["Health"];
                 };
             };
         };
@@ -2293,6 +2343,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ready_ready_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ready"];
                 };
             };
         };

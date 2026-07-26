@@ -19,11 +19,17 @@ from quantlab.data.validation import (
     CHECKS,
     Finding,
     Severity,
+    compare_to_previous,
     latest_report,
     run_checks,
     validate,
 )
-from quantlab.db.models import DataQualityFinding, OHLCVDaily, Security
+from quantlab.db.models import (
+    DataQualityFinding,
+    DataQualityRun,
+    OHLCVDaily,
+    Security,
+)
 
 START = date(2020, 1, 1)
 
@@ -162,11 +168,12 @@ def test_the_latest_run_is_the_one_served(defective: Session) -> None:
     assert report.counts["zero_volume"] == 2
 
 
-def test_a_clean_database_persists_nothing(session: Session) -> None:
-    """A run with no findings leaves no trace — the documented limitation.
+def test_a_never_validated_database_has_no_report(session: Session) -> None:
+    """`latest_report` is None only when validation genuinely never ran.
 
-    ``latest_report`` cannot distinguish "validated, all clean" from "never
-    validated", which is why the API keeps an on-demand fallback.
+    This previously also covered "validated and clean", because a clean run wrote
+    nothing. It no longer does: `data_quality_runs` records every run, so the two
+    states are distinguishable — see `test_a_clean_run_still_records_itself`.
     """
 
     _security(session, "SEC001")
@@ -174,9 +181,10 @@ def test_a_clean_database_persists_nothing(session: Session) -> None:
     _bar(session, "SEC001", date(2020, 1, 2))
     session.commit()
 
-    report = validate(session)
-    assert report.findings == []
-    assert latest_report(session) is None
+    assert latest_report(session) is None, "nothing has run yet"
+
+    validate(session)
+    assert latest_report(session) is not None, "a clean run is still a run"
 
 
 def test_finding_is_frozen() -> None:
@@ -191,3 +199,97 @@ def test_finding_is_frozen() -> None:
     )
     with pytest.raises(ValidationError):
         finding.check = "other"  # type: ignore[misc]
+
+
+# --- Regression guard (--fail-on-regression) ---------------------------------
+
+
+def test_a_clean_run_still_records_itself(session: Session) -> None:
+    """The whole reason `data_quality_runs` exists.
+
+    A clean run writes no findings. Before the run table, that made "validated,
+    nothing wrong" indistinguishable from "never validated" — so the API fell back
+    to on-demand forever and the regression guard could not compare against a
+    clean baseline.
+    """
+
+    _security(session, "SEC001")
+    session.flush()
+    _bar(session, "SEC001", date(2020, 1, 2))
+    session.commit()
+
+    report = validate(session)
+    assert report.findings == []
+
+    run = session.get(DataQualityRun, report.run_id)
+    assert run is not None, "a clean run must still leave a row"
+    assert run.error_count == 0
+    assert run.rows_examined == 1
+
+    # And it is now servable, rather than looking like "never validated".
+    assert latest_report(session) is not None
+
+
+def test_first_run_is_a_baseline_not_a_regression(defective: Session) -> None:
+    report = validate(defective)
+    assert report.run_id is not None
+
+    regression = compare_to_previous(defective, report.run_id)
+    assert regression.previous_run_id is None
+    assert regression.is_regression is False
+    assert "baseline" in regression.render()
+
+
+def test_clean_then_dirty_is_a_regression(session: Session) -> None:
+    """0 errors -> 1 error must fail. This is the case the guard exists for."""
+
+    _security(session, "SEC001")
+    session.flush()
+    _bar(session, "SEC001", date(2020, 1, 2))
+    session.commit()
+
+    clean = validate(session)
+    assert compare_to_previous(session, clean.run_id or "").is_regression is False
+
+    # A bar whose high does not bracket its close: one new ERROR.
+    _bar(session, "SEC001", date(2020, 1, 3), close=100.0, high=99.0, low=98.0)
+    session.commit()
+    dirty = validate(session)
+
+    regression = compare_to_previous(session, dirty.run_id or "")
+    assert regression.previous_run_id == clean.run_id
+    assert regression.is_regression is True
+    assert regression.worsened[Severity.ERROR] == (0, 1)
+    assert "REGRESSION" in regression.render()
+
+
+def test_unchanged_findings_are_not_a_regression(defective: Session) -> None:
+    first = validate(defective)
+    second = validate(defective)
+
+    regression = compare_to_previous(defective, second.run_id or "")
+    assert regression.previous_run_id == first.run_id
+    assert regression.is_regression is False
+
+
+def test_fewer_findings_is_not_a_regression(defective: Session) -> None:
+    """Fixing data must not fail the guard."""
+
+    before = validate(defective)
+    assert before.counts.get("zero_volume") == 1
+
+    # Repair the zero-volume bar.
+    bar = defective.scalars(select(OHLCVDaily).where(OHLCVDaily.volume == 0.0)).one()
+    bar.volume = 12_345.0
+    defective.commit()
+
+    after = validate(defective)
+    regression = compare_to_previous(defective, after.run_id or "")
+    assert regression.is_regression is False
+
+
+def test_comparing_an_unpersisted_run_raises(defective: Session) -> None:
+    """`run_checks` writes nothing, so there is no run to compare."""
+
+    with pytest.raises(ValueError, match="no data_quality_runs row"):
+        compare_to_previous(defective, "never-persisted")

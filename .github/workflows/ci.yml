@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   quality:
-    name: ruff · mypy · pytest
+    name: ruff · mypy · pytest (80% gate)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,8 +24,18 @@ jobs:
       - name: Set up Python 3.11
         run: uv python install 3.11
 
-      - name: Install project (dev extras)
-        run: uv pip install --system -e ".[dev]"
+      # WeasyPrint dlopen()s Pango/Cairo at render time. Without these the
+      # tearsheet tests skip, and a skipped test is not a passing test — the PDF
+      # path would reach production unexercised.
+      - name: Install WeasyPrint system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libcairo2 libpango-1.0-0 libpangocairo-1.0-0 \
+            libgdk-pixbuf-2.0-0 shared-mime-info fonts-dejavu-core
+
+      - name: Install project (dev + all runtime extras)
+        run: uv pip install --system -e ".[dev,data,research,api,reports,postgres,dashboard]"
 
       - name: Ruff (lint)
         run: ruff check .
@@ -36,5 +46,154 @@ jobs:
       - name: mypy (strict on src/)
         run: mypy
 
-      - name: pytest
-        run: pytest
+      # The coverage gate lives here rather than in pyproject so `pytest` stays
+      # fast and unencumbered locally while the gate is non-negotiable on a PR.
+      - name: pytest with 80% coverage gate on src/
+        run: >-
+          pytest
+          --cov=src/quantlab
+          --cov-report=term-missing:skip-covered
+          --cov-report=xml
+          --cov-fail-under=80
+
+      # Already covered by the run above; repeated as its own step because the
+      # look-ahead suite is the project's load-bearing correctness claim and a
+      # reviewer should be able to see it pass by name, not infer it.
+      - name: Look-ahead suite (whole feature registry)
+        run: pytest tests/feature_engineering/test_lookahead.py -v
+
+      - name: Design tokens in sync
+        run: python scripts/build_design_tokens.py --check
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
+          if-no-files-found: ignore
+
+  migrations:
+    name: alembic · SQLite + PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: quantlab
+          POSTGRES_PASSWORD: quantlab
+          POSTGRES_DB: quantlab
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U quantlab -d quantlab"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Install project
+        run: uv pip install --system -e ".[dev,data,api,postgres]"
+
+      # The acceptance criterion is "migrations run clean from empty on SQLite
+      # AND PostgreSQL". This job runs them for real against a live Postgres,
+      # which the offline DDL test in tests/db cannot do.
+      - name: Migrate from empty on PostgreSQL
+        env:
+          QUANTLAB_DATABASE_URL: postgresql+psycopg://quantlab:quantlab@localhost:5432/quantlab
+        run: |
+          alembic upgrade head
+          alembic check   # no model drift against the migrated schema
+
+      - name: Downgrade to base and back up again
+        env:
+          QUANTLAB_DATABASE_URL: postgresql+psycopg://quantlab:quantlab@localhost:5432/quantlab
+        run: |
+          alembic downgrade base
+          alembic upgrade head
+
+      - name: Migrate from empty on SQLite
+        env:
+          QUANTLAB_DATABASE_URL: sqlite:///ci-sqlite.db
+        run: |
+          alembic upgrade head
+          alembic check
+
+  frontend:
+    name: frontend · typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  docker:
+    name: docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # The API image's build ends with a real WeasyPrint render, so this step
+      # failing means the PDF stack is broken — the check the local test suite
+      # can only skip.
+      - name: Build API image (renders a PDF during build)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: quantlab-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: false
+          tags: quantlab-frontend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Prove the shipped image runs as a non-root user and serves /health.
+      - name: Smoke-test the API image
+        run: |
+          set -e
+          uid="$(docker run --rm quantlab-api:ci id -u)"
+          echo "container uid: $uid"
+          test "$uid" != "0" || { echo "image runs as root"; exit 1; }
+
+          docker run -d --name qlapi -p 8000:8000 \
+            -e QUANTLAB_DATABASE_URL=sqlite:////app/data/smoke.db quantlab-api:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8000/health && break || sleep 2
+          done
+          echo
+          curl -fsS http://127.0.0.1:8000/health | tee /dev/stderr | grep -q '"status":"ok"'
+          docker rm -f qlapi

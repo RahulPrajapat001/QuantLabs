@@ -272,6 +272,57 @@ class UnresolvedMembershipChange(Base):
         )
 
 
+class DataQualityRun(Base):
+    """One validation run, written whether or not it found anything.
+
+    This exists because the findings table alone cannot answer "has validation
+    ever run?". A clean database produces zero findings, so a run that passed and
+    a run that never happened are indistinguishable from
+    ``data_quality_findings`` — which broke two things:
+
+    * ``GET /quality/findings`` fell back to computing on demand forever on a
+      clean database, because there was no persisted run to read.
+    * ``--fail-on-regression`` could not detect the regression that matters most.
+      Comparing a dirty run against a *clean* baseline requires the clean
+      baseline to exist; without this table it did not, so every run following a
+      clean one was treated as a new baseline and 0 errors → 5 errors passed
+      silently.
+
+    Severity counts are denormalised here rather than aggregated from the
+    findings table on read: the regression guard compares them on every nightly
+    run, and a run that found nothing has no rows to aggregate.
+    """
+
+    __tablename__ = "data_quality_runs"
+
+    #: UUID4 hex. Matches ``data_quality_findings.run_id``.
+    run_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+    #: OHLCV rows examined.
+    rows_examined: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    #: Check names performed, as JSON — so a run is interpretable after the
+    #: registry of checks grows.
+    checks_run: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    error_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    warning_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    info_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    #: Narrowing filters the run was given, for provenance. A run scoped to one
+    #: security is not comparable with a full-database run, and the guard says so.
+    scope: Mapped[str | None] = mapped_column(String(256), nullable=True)
+
+    @property
+    def finding_count(self) -> int:
+        return self.error_count + self.warning_count + self.info_count
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        return (
+            f"<DataQualityRun {self.run_id[:8]} rows={self.rows_examined} "
+            f"e={self.error_count} w={self.warning_count} i={self.info_count}>"
+        )
+
+
 class DataQualityFinding(Base):
     """One structured defect found by a validation run (PRD Module 3).
 

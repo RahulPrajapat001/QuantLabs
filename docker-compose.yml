@@ -1,0 +1,134 @@
+# QuantLab full stack: PostgreSQL, API, Streamlit dashboard, Next.js frontend.
+#
+#   docker compose up --build
+#
+#   API        http://localhost:8000/docs
+#   Dashboard  http://localhost:8501
+#   Frontend   http://localhost:3000
+#
+# The database is PostgreSQL here — the production target. SQLite remains the
+# local-dev default (see .env.example) and both are exercised by
+# tests/db/test_migrations.py.
+#
+# `migrate` is a one-shot service the others wait on, so schema creation happens
+# exactly once rather than racing between an API replica and a dashboard. It also
+# renders the first PDF, which is how a missing Pango/Cairo library surfaces as a
+# failed startup rather than as a broken tearsheet endpoint later.
+
+name: quantlab
+
+x-database-url: &database-url
+  QUANTLAB_DATABASE_URL: postgresql+psycopg://quantlab:quantlab@postgres:5432/quantlab
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: quantlab
+      POSTGRES_PASSWORD: quantlab
+      POSTGRES_DB: quantlab
+    # Not published by default: nothing outside the compose network needs it, and
+    # a database on a laptop's 5432 is how a dev database gets pointed at by
+    # accident. Uncomment to inspect with psql.
+    # ports: ["5432:5432"]
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quantlab -d quantlab"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # One-shot: migrate to head, then prove the PDF stack works.
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *database-url
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - quantlab-data:/app/data
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        echo "--- alembic upgrade head (PostgreSQL) ---"
+        alembic upgrade head
+        echo "--- rendering a smoke-test PDF to prove Pango/Cairo are present ---"
+        python - <<'PY'
+        from pathlib import Path
+        import weasyprint
+        out = Path("/app/data/weasyprint_smoke.pdf")
+        weasyprint.HTML(string="<h1>QuantLab</h1><p>PDF stack OK.</p>").write_pdf(out)
+        head = out.read_bytes()[:5]
+        assert head == b"%PDF-", f"not a PDF: {head!r}"
+        print(f"OK: {out} ({out.stat().st_size} bytes, magic {head.decode()})")
+        PY
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *database-url
+      QUANTLAB_API_CORS_ORIGINS: '["http://localhost:3000","http://localhost:8501"]'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+    volumes:
+      - quantlab-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      QUANTLAB_API_URL: http://api:8000
+      <<: *database-url
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8501:8501"
+    volumes:
+      - quantlab-data:/app/data
+    command:
+      - streamlit
+      - run
+      - dashboard/Overview.py
+      - --server.port=8501
+      - --server.address=0.0.0.0
+      - --server.headless=true
+      - --browser.gatherUsageStats=false
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # Baked at build time: Next inlines NEXT_PUBLIC_* into the client bundle.
+        # This is the URL the *browser* uses, so it is localhost, not `api`.
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres-data:
+  quantlab-data:

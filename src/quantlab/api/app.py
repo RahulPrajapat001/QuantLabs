@@ -26,6 +26,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from quantlab.config import HoldoutViolationError, get_settings
+from quantlab.utils.logging import (
+    REQUEST_ID_HEADER,
+    configure_logging,
+    request_context,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -76,6 +81,7 @@ TAGS: list[dict[str, Any]] = [
 def create_app() -> FastAPI:
     """Build the application. A factory so tests get an isolated instance."""
 
+    configure_logging()
     settings = get_settings()
     app = FastAPI(
         title="QuantLab API",
@@ -86,6 +92,22 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
         openapi_url="/openapi.json",
     )
+
+    @app.middleware("http")
+    async def _request_id(request: Request, call_next: Any) -> Any:
+        """Bind a request id for the whole handler and echo it to the caller.
+
+        An inbound `X-Request-ID` is honoured so a trace can span the frontend
+        and the API; anything absent or implausibly long is replaced rather than
+        trusted, since it lands in every log line.
+        """
+
+        inbound = request.headers.get(REQUEST_ID_HEADER, "")
+        supplied = inbound if 0 < len(inbound) <= 64 else None
+        with request_context(supplied) as request_id:
+            response = await call_next(request)
+            response.headers[REQUEST_ID_HEADER] = request_id
+            return response
 
     app.add_middleware(
         CORSMiddleware,
@@ -126,9 +148,9 @@ def create_app() -> FastAPI:
     ):
         app.include_router(module.router)
 
-    @app.get("/health", tags=["research"], summary="Liveness probe.")
-    def health() -> dict[str, str]:
-        return {"status": "ok", "version": app.version}
+    from quantlab.api import health as ops
+
+    app.include_router(ops.router)
 
     return app
 

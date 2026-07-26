@@ -12,6 +12,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 
 from sqlalchemy import Engine, create_engine, event
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from quantlab.config import get_settings
@@ -22,13 +23,27 @@ from .models import Base
 def create_db_engine(database_url: str | None = None) -> Engine:
     """Create an :class:`~sqlalchemy.Engine` for ``database_url``.
 
-    Defaults to the configured ``QUANTLAB_DATABASE_URL``. Enforces SQLite
-    foreign keys (off by default in SQLite) so ``ON DELETE CASCADE`` behaves the
-    same on dev SQLite and prod PostgreSQL.
+    Defaults to the configured ``QUANTLAB_DATABASE_URL``. Both backends are
+    supported deliberately: SQLite for local development (zero setup, one file
+    to delete) and PostgreSQL for production (M4). The per-dialect tuning below
+    is the only place the difference is visible — every model, query and
+    migration is written once against SQLAlchemy Core.
+
+    * **SQLite** — foreign keys are *off* by default, so ``ON DELETE CASCADE``
+      would silently not cascade. The pragma makes dev behave like prod.
+    * **PostgreSQL** — ``pool_pre_ping`` because a pooled connection that a
+      container restart or an idle timeout has already closed otherwise surfaces
+      as a mid-request ``OperationalError``. ``pool_recycle`` keeps connections
+      under the typical proxy idle limit.
     """
 
     url = database_url or get_settings().database_url
-    engine = create_engine(url, future=True)
+    dialect = make_url(url).get_backend_name()
+
+    if dialect.startswith("postgresql"):
+        engine = create_engine(url, future=True, pool_pre_ping=True, pool_recycle=1800)
+    else:
+        engine = create_engine(url, future=True)
 
     if engine.dialect.name == "sqlite":
 

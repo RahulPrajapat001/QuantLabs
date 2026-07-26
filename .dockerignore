@@ -1,0 +1,51 @@
+# Keep the build context small and the image reproducible.
+#
+# Everything here either cannot affect the build, or must NOT reach the image:
+# a developer's .env would bake local credentials into a layer, and data/ is a
+# multi-gigabyte research artefact that belongs in a volume.
+
+# --- Secrets and local config ---
+.env
+.env.*
+!.env.example
+
+# --- Version control / CI ---
+.git
+.gitignore
+.github
+
+# --- Research data: mounted as a volume, never baked in ---
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Python build and cache artefacts ---
+.venv
+venv
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- Node: reinstalled from the lockfile inside the build ---
+**/node_modules
+frontend/.next
+frontend/out
+frontend/*.tsbuildinfo
+
+# --- Editor / OS noise ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Docs and notebooks (docs/ is copied explicitly where needed) ---
+notebooks/

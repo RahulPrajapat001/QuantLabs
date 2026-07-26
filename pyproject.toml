@@ -68,6 +68,13 @@ dashboard = [
 reports = [
     "weasyprint>=61.0",
 ]
+# --- M4: Production ----------------------------------------------------------
+# PostgreSQL is the production target; SQLite stays the local-dev default. The
+# driver is an extra rather than a core dependency so a developer running against
+# SQLite does not need libpq installed.
+postgres = [
+    "psycopg[binary]>=3.1",
+]
 # --- Tooling -----------------------------------------------------------------
 dev = [
     "pytest>=8.1",

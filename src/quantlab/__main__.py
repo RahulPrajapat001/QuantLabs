@@ -133,16 +133,26 @@ def validate(
         "--dry-run",
         help="Print the findings without writing them to data_quality_findings.",
     ),
+    fail_on_regression: bool = typer.Option(
+        False,
+        "--fail-on-regression",
+        help="Exit non-zero if any severity count is worse than the previous run.",
+    ),
 ) -> None:
     """Run the Module 3 data-quality checks and persist the findings.
 
     This is what writes ``data_quality_findings``; ``GET /quality/findings`` reads
     what this leaves behind and falls back to computing on demand when no run has
-    ever written a row. ``--fail-on-regression`` (PRD Module 3) is not built yet,
-    so this always exits 0 — findings are reported, not enforced.
+    ever written a row.
+
+    ``--fail-on-regression`` compares this run's severity counts against the
+    previous run's and exits 1 if any severity increased. This is what the
+    scheduled refresh invokes, so a nightly ingest that starts producing bad bars
+    fails the job instead of quietly accumulating findings nobody reads. A first
+    run is the baseline and cannot regress.
     """
 
-    from quantlab.data.validation import run_checks
+    from quantlab.data.validation import compare_to_previous, run_checks
     from quantlab.data.validation import validate as run_validation
     from quantlab.db.session import (
         create_all,
@@ -170,8 +180,27 @@ def validate(
         typer.echo(f"  {count:>6}  {check}")
     if dry_run:
         typer.echo("Dry run: nothing written.")
-    else:
-        typer.echo(f"Persisted as run_id {report.run_id}.")
+        if fail_on_regression:
+            # A dry run persists nothing, so there is no run to compare. Saying so
+            # is better than exiting 0 and implying the guard passed.
+            typer.echo(
+                "--fail-on-regression needs a persisted run; --dry-run wrote none.",
+                err=True,
+            )
+            raise typer.Exit(code=2)
+        return
+
+    typer.echo(f"Persisted as run_id {report.run_id}.")
+
+    if not fail_on_regression:
+        return
+
+    assert report.run_id is not None  # persisted above
+    with session_scope(factory) as session:
+        regression = compare_to_previous(session, report.run_id)
+    typer.echo(regression.render())
+    if regression.is_regression:
+        raise typer.Exit(code=1)
 
 
 universe_app = typer.Typer(help="Point-in-time universe construction (PRD Module 2).")

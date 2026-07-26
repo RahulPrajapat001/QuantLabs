@@ -96,10 +96,29 @@ def test_ohlcv_with_no_match_is_404(client):
     assert r.status_code == 404
 
 
-def test_features_without_a_built_panel_is_404(client):
-    r = client.get("/market/features")
-    assert r.status_code == 404
-    assert "features build" in r.json()["detail"]
+def test_features_without_a_built_panel_is_404(client, tmp_path, monkeypatch):
+    """Pointed at an empty features dir, not the ambient one.
+
+    This test used to read `settings.features_dir`, so it passed only on a machine
+    that had never run `quantlab features build` — and failed for everyone else,
+    which is a test measuring the developer's disk rather than the code. The
+    directory is created but left empty on purpose: "exists but has no parquet"
+    is the real state of a fresh checkout and the case that used to raise
+    ArrowInvalid instead of a clean 404.
+    """
+
+    from quantlab.config import get_settings
+
+    empty = tmp_path / "features"
+    empty.mkdir()
+    monkeypatch.setenv("QUANTLAB_FEATURES_DIR", str(empty))
+    get_settings.cache_clear()
+    try:
+        r = client.get("/market/features")
+        assert r.status_code == 404
+        assert "features build" in r.json()["detail"]
+    finally:
+        get_settings.cache_clear()
 
 
 # --- Data quality -------------------------------------------------------------
@@ -129,8 +148,21 @@ def test_persisted_findings_are_preferred_over_recomputing(client, session):
 
     from datetime import date as _date
 
-    from quantlab.db.models import DataQualityFinding
+    from quantlab.db.models import DataQualityFinding, DataQualityRun
 
+    # A persisted run is now BOTH a run row and its findings. The run row is the
+    # source of truth for "has validation run?" — findings alone cannot answer it,
+    # because a clean run has none.
+    session.add(
+        DataQualityRun(
+            run_id="testrun0000",
+            rows_examined=4_242,
+            checks_run=["zero_volume"],
+            error_count=0,
+            warning_count=1,
+            info_count=0,
+        )
+    )
     session.add(
         DataQualityFinding(
             run_id="testrun0000",
@@ -159,6 +191,7 @@ def test_persisted_findings_are_preferred_over_recomputing(client, session):
         assert session.query(DataQualityFinding).count() == 1
     finally:
         session.query(DataQualityFinding).delete()
+        session.query(DataQualityRun).delete()
         session.commit()
 
 

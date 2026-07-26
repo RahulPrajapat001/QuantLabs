@@ -67,16 +67,71 @@ def test_a_failing_job_records_the_error_not_a_traceback():
 
 
 def test_eviction_never_drops_a_running_job():
+    """The invariant in the name: a live job is never evicted.
+
+    Capacity is enforced *opportunistically, at submit time* — `_evict_locked`
+    runs from `submit` and can only drop jobs that have reached a terminal state.
+    So a burst of submissions onto one worker legitimately exceeds capacity while
+    those jobs are still queued: there is nothing evictable yet. That is the
+    design (never drop live work), not a bug, but it means "len(jobs) <= capacity+1"
+    only holds once a later submission arrives to do the sweeping.
+
+    This test asserts both halves separately instead of assuming the burst alone
+    settles: first that no live job is ever dropped, then that capacity is honoured
+    once a submission occurs with terminal jobs available to evict. The previous
+    version asserted the second half immediately after the burst and passed only
+    when the machine happened to be idle enough for jobs to finish between
+    submissions.
+    """
+
     registry = JobRegistry(max_workers=1, capacity=2)
     try:
-        for _ in range(6):
-            registry.submit("test", lambda: None)
-        time.sleep(0.5)
+        submitted = [registry.submit("test", lambda: None) for _ in range(6)]
+
+        # Nothing live may be evicted, whatever the capacity pressure.
+        for job in submitted:
+            assert registry.get(job.id) is not None or job.state.terminal, (
+                f"job {job.id[:8]} was evicted while not terminal"
+            )
+
+        # Wait for the burst to drain.
+        deadline = time.monotonic() + 10.0
+        while time.monotonic() < deadline:
+            jobs = registry.list(kind="test", limit=50)
+            if jobs and all(j.state.terminal for j in jobs):
+                break
+            time.sleep(0.02)
+        assert all(j.state.terminal for j in registry.list(kind="test", limit=50)), (
+            "jobs did not finish within 10s"
+        )
+
+        # One more submission gives eviction terminal jobs to sweep.
+        registry.submit("test", lambda: None)
+        deadline = time.monotonic() + 10.0
+        while time.monotonic() < deadline:
+            if (
+                len(registry.list(kind="test", limit=50))
+                <= registry_capacity(registry) + 1
+            ):
+                break
+            time.sleep(0.02)
+
         jobs = registry.list(kind="test", limit=50)
-        assert len(jobs) <= 3
-        assert all(j.state.terminal for j in jobs)
+        assert len(jobs) <= registry_capacity(registry) + 1, (
+            f"capacity {registry_capacity(registry)} not enforced after a sweeping "
+            f"submit: {len(jobs)} jobs retained"
+        )
     finally:
         registry.shutdown()
+
+
+def registry_capacity(registry: JobRegistry) -> int:
+    """Read the configured capacity without asserting on a private name inline."""
+
+    # Reading a private attribute deliberately: the test asserts on the capacity
+    # the registry was *configured* with, not on a duplicated literal that could
+    # drift from the constructor call above.
+    return registry._capacity
 
 
 # --- Submission gates ---------------------------------------------------------

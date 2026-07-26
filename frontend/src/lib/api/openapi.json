@@ -442,6 +442,29 @@
         "title": "BetaRequest",
         "type": "object"
       },
+      "Check": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "ok",
+          "detail"
+        ],
+        "title": "Check",
+        "type": "object"
+      },
       "CompletenessCell": {
         "description": "One security-month: bars present against NSE sessions expected.",
         "properties": {
@@ -1290,6 +1313,24 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "Health": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "version"
+        ],
+        "title": "Health",
+        "type": "object"
+      },
       "Holding": {
         "properties": {
           "security_id": {
@@ -2095,6 +2136,55 @@
           "findings"
         ],
         "title": "QualityReport",
+        "type": "object"
+      },
+      "Ready": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/Check"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "data_age_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Age Days"
+          },
+          "latest_bar": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Bar"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ready",
+          "version",
+          "checks"
+        ],
+        "title": "Ready",
         "type": "object"
       },
       "ReferenceRatio": {
@@ -3512,17 +3602,14 @@
     },
     "/health": {
       "get": {
+        "description": "Process liveness. Deliberately touches no dependency \u2014 see module docs.",
         "operationId": "health_health_get",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Health Health Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/Health"
                 }
               }
             },
@@ -3531,7 +3618,7 @@
         },
         "summary": "Liveness probe.",
         "tags": [
-          "research"
+          "ops"
         ]
       }
     },
@@ -3997,6 +4084,28 @@
         "summary": "Persisted findings, or the checks run now.",
         "tags": [
           "quality"
+        ]
+      }
+    },
+    "/ready": {
+      "get": {
+        "description": "Readiness. Returns 503 when any check fails, so a load balancer can act.",
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ready"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Readiness, incl. data freshness.",
+        "tags": [
+          "ops"
         ]
       }
     },
